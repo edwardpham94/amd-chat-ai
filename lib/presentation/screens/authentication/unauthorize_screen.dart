@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-class VoiceChatScreen extends StatelessWidget {
-  const VoiceChatScreen({Key? key}) : super(key: key);
+class UnauthorizeScreen extends StatelessWidget {
+  const UnauthorizeScreen({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -76,7 +76,11 @@ class VoiceChatScreen extends StatelessWidget {
               ),
               const Spacer(),
               ElevatedButton(
-                onPressed: () {},
+                onPressed: () {
+                  // Google sign in would typically be implemented here
+                  // For now, we'll just navigate to the login screen
+                  Navigator.pushNamed(context, '/login');
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF6C63FF),
                   minimumSize: const Size(double.infinity, 50),
@@ -101,7 +105,9 @@ class VoiceChatScreen extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               ElevatedButton(
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.pushNamed(context, '/signup');
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFF5F3FF),
                   minimumSize: const Size(double.infinity, 50),
@@ -131,7 +137,9 @@ class VoiceChatScreen extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               OutlinedButton(
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.pushNamed(context, '/login');
+                },
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: Color(0xFFDDDDDD)),
                   minimumSize: const Size(double.infinity, 50),
