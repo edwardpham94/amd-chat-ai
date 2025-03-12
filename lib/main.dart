@@ -1,5 +1,7 @@
+import 'package:amd_chat_ai/presentation/screens/authentication/login_screen_v1.dart';
+import 'package:amd_chat_ai/presentation/screens/authentication/signup_screen_v1.dart';
+import 'package:amd_chat_ai/presentation/screens/authentication/unauthorize_screen.dart';
 import 'package:flutter/material.dart';
-import 'presentation/screens/authentication/login_screen.dart'; // Import file màn hình đăng nhập
 
 void main() {
   runApp(const MyApp());
@@ -16,7 +18,12 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: LoginScreen(),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const UnauthorizeScreen(),
+        '/login': (context) => const LoginScreen(),
+        '/signup': (context) => const SignUpScreen(),
+      },
     );
   }
 }
