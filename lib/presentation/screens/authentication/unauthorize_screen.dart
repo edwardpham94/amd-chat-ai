@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class UnauthorizeScreen extends StatelessWidget {
-  const UnauthorizeScreen({Key? key}) : super(key: key);
+  const UnauthorizeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +20,7 @@ class UnauthorizeScreen extends StatelessWidget {
                     width: 36,
                     height: 36,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF6C63FF).withOpacity(0.1),
+                      color: const Color(0xFF6C63FF).withAlpha(26),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Icon(
@@ -65,7 +65,7 @@ class UnauthorizeScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(40),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF6C63FF).withOpacity(0.3),
+                        color: const Color(0xFF6C63FF).withAlpha(77),
                         blurRadius: 15,
                         offset: const Offset(0, 5),
                       ),

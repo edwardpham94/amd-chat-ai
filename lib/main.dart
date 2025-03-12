@@ -1,6 +1,8 @@
 import 'package:amd_chat_ai/presentation/screens/authentication/login_screen_v1.dart';
 import 'package:amd_chat_ai/presentation/screens/authentication/signup_screen_v1.dart';
 import 'package:amd_chat_ai/presentation/screens/authentication/unauthorize_screen.dart';
+import 'package:amd_chat_ai/presentation/screens/knowledge/create_knowledge_screen.dart';
+import 'package:amd_chat_ai/presentation/screens/knowledge/knowledge_screen.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -23,6 +25,8 @@ class MyApp extends StatelessWidget {
         '/': (context) => const UnauthorizeScreen(),
         '/login': (context) => const LoginScreen(),
         '/signup': (context) => const SignUpScreen(),
+        '/knowledge': (context) => const KnowledgeScreen(),
+        '/create-knowledge': (context) => const CreateKnowledgeScreen(),
       },
     );
   }
