@@ -3,6 +3,9 @@ import 'package:amd_chat_ai/presentation/screens/authentication/signup_screen_v1
 import 'package:amd_chat_ai/presentation/screens/authentication/unauthorize_screen.dart';
 import 'package:amd_chat_ai/presentation/screens/knowledge/create_knowledge_screen.dart';
 import 'package:amd_chat_ai/presentation/screens/knowledge/knowledge_screen.dart';
+import 'package:amd_chat_ai/presentation/screens/prompt/create_prompt_screen.dart';
+import 'package:amd_chat_ai/presentation/screens/prompt/prompt_screen.dart';
+import 'package:amd_chat_ai/presentation/screens/prompt/update_prompt_screen.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -27,6 +30,9 @@ class MyApp extends StatelessWidget {
         '/signup': (context) => const SignUpScreen(),
         '/knowledge': (context) => const KnowledgeScreen(),
         '/create-knowledge': (context) => const CreateKnowledgeScreen(),
+        '/prompt': (context) => const PromptScreen(),
+        '/create-prompt': (context) => const CreatePromptScreen(),
+        '/update-prompt': (context) => const UpdatePromptScreen(),
       },
     );
   }
