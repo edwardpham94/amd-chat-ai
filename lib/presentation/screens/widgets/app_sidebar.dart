@@ -28,6 +28,14 @@ class AppSidebar extends StatelessWidget {
             ),
             const Divider(),
             ListTile(
+              leading: const Icon(Icons.person),
+              title: const Text('Account Settings'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/account-settings');
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.book),
               title: const Text('Knowledge Base'),
               onTap: () {

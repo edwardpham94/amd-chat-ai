@@ -116,7 +116,7 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
           ChatInput(
             controller: _messageController,
             onSend: _handleSendMessage,
-            hintText: 'design a web page',
+            hintText: 'Message AI Bot',
           ),
         ],
       ),
