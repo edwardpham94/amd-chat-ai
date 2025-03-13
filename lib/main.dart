@@ -9,6 +9,9 @@ import 'package:amd_chat_ai/presentation/screens/profile/profile.dart';
 import 'package:amd_chat_ai/presentation/screens/prompt/create_prompt_screen.dart';
 import 'package:amd_chat_ai/presentation/screens/prompt/prompt_screen.dart';
 import 'package:amd_chat_ai/presentation/screens/prompt/update_prompt_screen.dart';
+import 'package:amd_chat_ai/presentation/screens/assistant/assistant_screen.dart';
+import 'package:amd_chat_ai/presentation/screens/assistant/create_assistant_screen.dart';
+import 'package:amd_chat_ai/presentation/screens/assistant/update_assistant_screen.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -36,6 +39,9 @@ class MyApp extends StatelessWidget {
         '/prompt': (context) => const PromptScreen(),
         '/create-prompt': (context) => const CreatePromptScreen(),
         '/update-prompt': (context) => const UpdatePromptScreen(),
+        '/assistant': (context) => const AssistantScreen(),
+        '/create-assistant': (context) => const CreateAssistantScreen(),
+        '/update-assistant': (context) => const UpdateAssistantScreen(),
         '/chat-ai': (context) => const ChatAIScreen(),
         '/profile': (context) => const ProfileScreen(),
         '/account-settings':
