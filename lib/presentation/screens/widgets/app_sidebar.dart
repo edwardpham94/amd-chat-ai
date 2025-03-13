@@ -43,28 +43,36 @@ class AppSidebar extends StatelessWidget {
                 Navigator.pushNamed(context, '/knowledge');
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.add_circle_outline),
-              title: const Text('Create Knowledge'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, '/create-knowledge');
-              },
-            ),
+            // ListTile(
+            //   leading: const Icon(Icons.add_circle_outline),
+            //   title: const Text('Create Knowledge'),
+            //   onTap: () {
+            //     Navigator.pop(context);
+            //     Navigator.pushNamed(context, '/create-knowledge');
+            //   },
+            // ),
             ListTile(
               leading: const Icon(Icons.chat_bubble_outline),
-              title: const Text('Prompts'),
+              title: const Text('Prompt'),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.pushNamed(context, '/prompt');
               },
             ),
+            // ListTile(
+            //   leading: const Icon(Icons.add_comment),
+            //   title: const Text('Create Prompt'),
+            //   onTap: () {
+            //     Navigator.pop(context);
+            //     Navigator.pushNamed(context, '/create-prompt');
+            //   },
+            // ),
             ListTile(
-              leading: const Icon(Icons.add_comment),
-              title: const Text('Create Prompt'),
+              leading: const Icon(Icons.assistant),
+              title: const Text('Assistant'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.pushNamed(context, '/create-prompt');
+                Navigator.pushNamed(context, '/assistant');
               },
             ),
             ListTile(
