@@ -1,6 +1,7 @@
 import 'package:amd_chat_ai/presentation/screens/authentication/login_screen_v1.dart';
 import 'package:amd_chat_ai/presentation/screens/authentication/signup_screen_v1.dart';
 import 'package:amd_chat_ai/presentation/screens/authentication/unauthorize_screen.dart';
+import 'package:amd_chat_ai/presentation/screens/chat-ai/chat_ai_screen.dart';
 import 'package:amd_chat_ai/presentation/screens/knowledge/create_knowledge_screen.dart';
 import 'package:amd_chat_ai/presentation/screens/knowledge/knowledge_screen.dart';
 import 'package:amd_chat_ai/presentation/screens/prompt/create_prompt_screen.dart';
@@ -23,7 +24,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      initialRoute: '/',
+      initialRoute: '/chat-ai',
       routes: {
         '/': (context) => const UnauthorizeScreen(),
         '/login': (context) => const LoginScreen(),
@@ -33,6 +34,7 @@ class MyApp extends StatelessWidget {
         '/prompt': (context) => const PromptScreen(),
         '/create-prompt': (context) => const CreatePromptScreen(),
         '/update-prompt': (context) => const UpdatePromptScreen(),
+        '/chat-ai': (context) => const ChatAIScreen(),
       },
     );
   }
