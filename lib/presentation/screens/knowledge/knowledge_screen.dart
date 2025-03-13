@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:amd_chat_ai/presentation/screens/widgets/base_screen.dart';
 
 class KnowledgeScreen extends StatelessWidget {
   const KnowledgeScreen({super.key});
@@ -180,104 +181,88 @@ class KnowledgeScreen extends StatelessWidget {
       },
     ];
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: const Text(
-          'Knowledge',
-          style: TextStyle(
-            color: Color(0xFF3B5998),
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            letterSpacing: -0.5,
-          ),
+    final newKnowledgeButton = Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF415DF2), Color(0xFF5B8AF5)],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
         ),
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.black, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF415DF2), Color(0xFF5B8AF5)],
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                ),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF415DF2).withAlpha(77),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () {
-                    Navigator.of(context).pushNamed('/create-knowledge');
-                  },
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.add_circle_outline,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                        SizedBox(width: 4),
-                        Text(
-                          'New',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF415DF2).withAlpha(77),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            Navigator.of(context).pushNamed('/create-knowledge');
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.add_circle_outline, color: Colors.white, size: 20),
+                SizedBox(width: 4),
+                Text(
+                  'New',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    return BaseScreen(
+      title: 'Knowledge',
+      showBackButton: true,
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
         child: Column(
           children: [
-            // Search bar
-            Container(
-              margin: const EdgeInsets.symmetric(vertical: 16.0),
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: TextField(
-                decoration: InputDecoration(
-                  hintText: 'Search Knowledge',
-                  prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
+            // New Knowledge button and search bar row
+            Row(
+              children: [
+                const Expanded(
+                  child: TextField(
+                    decoration: InputDecoration(
+                      hintText: 'Search Knowledge',
+                      prefixIcon: Icon(Icons.search, color: Colors.grey),
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(vertical: 12),
+                      filled: true,
+                      fillColor: Color(0xFFF5F5F5),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(12)),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(12)),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(width: 12),
+                newKnowledgeButton,
+              ],
             ),
+            const SizedBox(height: 16),
 
-            // Knowledge count and filter options
+            // Knowledge count
             Padding(
               padding: const EdgeInsets.only(bottom: 16.0),
               child: Row(
@@ -299,23 +284,41 @@ class KnowledgeScreen extends StatelessWidget {
                 itemCount: knowledgeItems.length,
                 separatorBuilder:
                     (context, index) =>
-                        const Divider(height: 1, color: Colors.transparent),
+                        const Divider(height: 1, color: Color(0xFFEEEEEE)),
                 itemBuilder: (context, index) {
                   final item = knowledgeItems[index];
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  return Container(
+                    margin: const EdgeInsets.symmetric(vertical: 8.0),
+                    padding: const EdgeInsets.all(16.0),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
                     child: Row(
                       children: [
-                        // Avatar
-                        CircleAvatar(
-                          radius: 24,
-                          backgroundColor: item['avatarColor'] as Color,
-                          child: Text(
-                            item['name'].toString().substring(0, 1),
-                            style: const TextStyle(color: Colors.white),
+                        // Document icon
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: (item['avatarColor'] as Color).withOpacity(
+                              0.1,
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(
+                            Icons.description_outlined,
+                            color: item['avatarColor'] as Color,
+                            size: 24,
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 16),
                         // Name and description - with Expanded
                         Expanded(
                           child: Column(
@@ -330,7 +333,7 @@ class KnowledgeScreen extends StatelessWidget {
                                 ),
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              const SizedBox(height: 2),
+                              const SizedBox(height: 4),
                               Text(
                                 item['description'].toString(),
                                 style: const TextStyle(
@@ -342,20 +345,18 @@ class KnowledgeScreen extends StatelessWidget {
                             ],
                           ),
                         ),
-                        // Delete button - with fixed width
-                        SizedBox(
-                          width: 48,
-                          child: IconButton(
-                            icon: const Icon(
-                              Icons.delete_outline,
-                              color: Colors.red,
-                            ),
-                            onPressed:
-                                () => _showDeleteConfirmation(
-                                  context,
-                                  item['name'].toString(),
-                                ),
+                        // Delete button
+                        IconButton(
+                          icon: const Icon(
+                            Icons.delete_outline,
+                            color: Colors.red,
+                            size: 22,
                           ),
+                          onPressed:
+                              () => _showDeleteConfirmation(
+                                context,
+                                item['name'].toString(),
+                              ),
                         ),
                       ],
                     ),
