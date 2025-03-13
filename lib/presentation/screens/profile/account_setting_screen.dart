@@ -10,9 +10,6 @@ class AccountSettingsScreen extends StatelessWidget {
     return BaseScreen(
       title: 'Account Settings',
       showBackButton: true,
-      actions: [
-        IconButton(icon: const Icon(Icons.more_vert), onPressed: () {}),
-      ],
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,

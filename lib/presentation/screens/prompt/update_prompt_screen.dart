@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:amd_chat_ai/presentation/screens/widgets/base_screen.dart';
 
 class UpdatePromptScreen extends StatefulWidget {
   const UpdatePromptScreen({super.key});
@@ -48,7 +48,7 @@ class _UpdatePromptScreenState extends State<UpdatePromptScreen>
 
       if (promptData != null) {
         setState(() {
-          _titleController.text = promptData['name'] ?? '';
+          _titleController.text = promptData['title'] ?? '';
           _contentController.text = promptData['content'] ?? '';
           _descriptionController.text = promptData['description'] ?? '';
           _selectedCategory = promptData['category'] ?? 'General';
@@ -69,41 +69,9 @@ class _UpdatePromptScreenState extends State<UpdatePromptScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        systemOverlayStyle: const SystemUiOverlayStyle(
-          statusBarColor: Colors.transparent,
-          statusBarIconBrightness: Brightness.dark,
-        ),
-        title: const Text(
-          'Update Prompt',
-          style: TextStyle(
-            color: Color(0xFF3B5998),
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            letterSpacing: -0.5,
-          ),
-        ),
-        centerTitle: true,
-        leading: IconButton(
-          icon: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.grey.withAlpha(26),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.arrow_back_ios,
-              color: Colors.black,
-              size: 18,
-            ),
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
+    return BaseScreen(
+      title: 'Update Prompt',
+      showBackButton: true,
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         child: Padding(
@@ -277,7 +245,7 @@ class _UpdatePromptScreenState extends State<UpdatePromptScreen>
 
               const SizedBox(height: 48),
 
-              // Create Button
+              // Update Button
               Container(
                 width: double.infinity,
                 height: 56,
@@ -293,7 +261,7 @@ class _UpdatePromptScreenState extends State<UpdatePromptScreen>
                 ),
                 child: ElevatedButton(
                   onPressed: () {
-                    // Handle create prompt logic
+                    // Handle update prompt logic
                     final prompt = {
                       'title': _titleController.text,
                       'content': _contentController.text,

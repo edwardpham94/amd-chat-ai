@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:amd_chat_ai/presentation/screens/widgets/base_screen.dart';
 
 class CreateKnowledgeScreen extends StatefulWidget {
   const CreateKnowledgeScreen({super.key});
@@ -63,46 +63,14 @@ class _CreateKnowledgeScreenState extends State<CreateKnowledgeScreen>
       {
         'title': 'Slack',
         'description': 'Import Link Slack',
-        r'icon': FontAwesomeIcons.slack,
+        'icon': FontAwesomeIcons.slack,
         'avatarColor': Colors.green[100]!,
       },
     ];
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        systemOverlayStyle: const SystemUiOverlayStyle(
-          statusBarColor: Colors.transparent,
-          statusBarIconBrightness: Brightness.dark,
-        ),
-        title: const Text(
-          'Create Knowledge',
-          style: TextStyle(
-            color: Color(0xFF3B5998),
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            letterSpacing: -0.5,
-          ),
-        ),
-        centerTitle: true,
-        leading: IconButton(
-          icon: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.grey.withAlpha(26),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.arrow_back_ios,
-              color: Colors.black,
-              size: 18,
-            ),
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
+    return BaseScreen(
+      title: 'Create Knowledge',
+      showBackButton: true,
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         child: Padding(
