@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:amd_chat_ai/presentation/screens/widgets/base_screen.dart';
+import 'package:amd_chat_ai/presentation/screens/widgets/new_button_widget.dart';
 
 class KnowledgeScreen extends StatelessWidget {
   const KnowledgeScreen({super.key});
@@ -181,51 +182,6 @@ class KnowledgeScreen extends StatelessWidget {
       },
     ];
 
-    final newKnowledgeButton = Container(
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF415DF2), Color(0xFF5B8AF5)],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF415DF2).withAlpha(77),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            Navigator.of(context).pushNamed('/create-knowledge');
-          },
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.add_circle_outline, color: Colors.white, size: 20),
-                SizedBox(width: 4),
-                Text(
-                  'New',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-
     return BaseScreen(
       title: 'Knowledge',
       showBackButton: true,
@@ -257,7 +213,11 @@ class KnowledgeScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                newKnowledgeButton,
+                NewButton(
+                  onTap: () {
+                    Navigator.of(context).pushNamed('/create-knowledge');
+                  },
+                ),
               ],
             ),
             const SizedBox(height: 16),

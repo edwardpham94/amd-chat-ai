@@ -78,7 +78,7 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2D2D5F).withOpacity(0.1),
+                    color: const Color(0xFF2D2D5F).withAlpha(26),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Text(

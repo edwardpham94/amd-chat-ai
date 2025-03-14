@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:amd_chat_ai/presentation/screens/widgets/base_screen.dart';
+import 'package:amd_chat_ai/presentation/screens/widgets/primary_button.dart';
 
 class CreatePromptScreen extends StatefulWidget {
   const CreatePromptScreen({super.key});
@@ -158,51 +159,21 @@ class _CreatePromptScreenState extends State<CreatePromptScreen> {
               const SizedBox(height: 48),
 
               // Create Button
-              Container(
-                width: double.infinity,
-                height: 56,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF415DF2).withAlpha(77),
-                      blurRadius: 15,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: ElevatedButton(
-                  onPressed: () {
-                    // Handle create prompt logic
-                    final prompt = {
-                      'title': _titleController.text,
-                      'content': _contentController.text,
-                      'description': _descriptionController.text,
-                      'category': _selectedCategory,
-                      'isPublic': _isPublic,
-                    };
+              PrimaryButton(
+                label: 'Create Prompt',
+                onPressed: () {
+                  // Handle create prompt logic
+                  final prompt = {
+                    'title': _titleController.text,
+                    'content': _contentController.text,
+                    'description': _descriptionController.text,
+                    'category': _selectedCategory,
+                    'isPublic': _isPublic,
+                  };
 
-                    debugPrint('Created prompt: $prompt');
-                    Navigator.pop(context);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    backgroundColor: const Color(0xFF415DF2),
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  child: const Text(
-                    'Create',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
+                  debugPrint('Created prompt: $prompt');
+                  Navigator.pop(context);
+                },
               ),
 
               const SizedBox(height: 24),
