@@ -1,5 +1,9 @@
 # Advanced Mobile Development - AI Chatbot App
 
+## DrawIO Widget Tree
+https://drive.google.com/file/d/1vNs0bSQ925qof4RIKO1qQQIW8kkLqvaV/view
+
+
 ## Getting Started
 
 This project is a starting point for a Flutter application.
