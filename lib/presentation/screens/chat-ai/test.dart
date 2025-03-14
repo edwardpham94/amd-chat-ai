@@ -315,18 +315,6 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 8,
-                const SizedBox(height: 24),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2D2D5F).withAlpha(26),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Text(
-                    'Please login to save your chats',
-                    style: TextStyle(
-                      color: Color(0xFF2D2D5F),
-                      fontWeight: FontWeight.w500,
                     ),
                   ),
                   child: const Row(

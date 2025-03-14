@@ -31,6 +31,15 @@ class _LoginScreenState extends State<LoginScreen> {
     });
   }
 
+  void _handleLogin() {
+    Navigator.pushReplacementNamed(context, '/chat-ai');
+    // Validate inputs
+    if (_emailController.text.isNotEmpty &&
+        _passwordController.text.isNotEmpty) {
+      Navigator.pushReplacementNamed(context, '/');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -179,13 +188,16 @@ class _LoginScreenState extends State<LoginScreen> {
                     ],
                   ),
                   TextButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      // Navigate to forget password screen
+                      Navigator.pushNamed(context, '/forget-password');
+                    },
                     style: TextButton.styleFrom(
                       padding: EdgeInsets.zero,
                       minimumSize: const Size(0, 0),
                     ),
                     child: const Text(
-                      'Reset password',
+                      'Forgot password?',
                       style: TextStyle(fontSize: 12, color: Colors.redAccent),
                     ),
                   ),
@@ -213,7 +225,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 24),
               ElevatedButton(
-                onPressed: () {},
+                onPressed: _handleLogin,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF6C63FF),
                   minimumSize: const Size(double.infinity, 52),
@@ -235,7 +247,9 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 16),
               OutlinedButton(
-                onPressed: () {},
+                onPressed: () {
+                  // Handle Google sign in
+                },
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 52),
                   side: BorderSide(color: Colors.grey[200]!),
@@ -250,6 +264,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       'https://www.google.com/favicon.ico',
                       height: 18,
                       width: 18,
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Icon(
+                          Icons.g_mobiledata,
+                          size: 24,
+                          color: Colors.red,
+                        );
+                      },
                     ),
                     const SizedBox(width: 8),
                     const Text(
