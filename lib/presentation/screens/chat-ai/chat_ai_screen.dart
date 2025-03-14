@@ -1,8 +1,7 @@
-import 'package:amd_chat_ai/presentation/screens/widgets/app_sidebar.dart';
-import 'package:amd_chat_ai/presentation/screens/widgets/chat-ai/modal_selector.dart';
 import 'package:amd_chat_ai/presentation/screens/widgets/chat-ai/prompt_template.dart';
 import 'package:flutter/material.dart';
 import '../widgets/chat_message.dart';
+import 'package:amd_chat_ai/presentation/screens/widgets/base_screen.dart';
 
 class ChatAIScreen extends StatefulWidget {
   const ChatAIScreen({super.key});
@@ -15,49 +14,42 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
   final TextEditingController _messageController = TextEditingController();
   final List<Map<String, dynamic>> _messages = [];
   bool _showWelcomeMessage = true;
-  String _selectedModel = 'GPT-4o mini';
-  bool _showModelSelector = false;
-  int _tokenCount = 30;
-
   final List<Map<String, dynamic>> _aiModels = [
     {
-      'name': 'GPT-4o mini',
-      'description':
-          'OpenAI\'s latest model, very fast and great for most everyday tasks.',
-      'cost': '1 Token',
-      'icon': Icons.auto_awesome,
+      'name': 'GPT-3.5',
+      'selected': false,
+      'description': 'Fast & efficient for everyday tasks',
+      'tokens': '4K context',
+      'speed': 'Very Fast',
     },
     {
-      'name': 'GPT-4o',
-      'description': 'Most capable model for complex tasks.',
-      'cost': '2 Tokens',
-      'icon': Icons.auto_awesome,
+      'name': 'GPT-4',
+      'selected': true,
+      'description': 'Most capable model for complex tasks',
+      'tokens': '8K context',
+      'speed': 'Standard',
     },
     {
-      'name': 'Gemini 1.5 Flash',
-      'description': 'Fast and efficient for quick responses.',
-      'cost': '1 Token',
-      'icon': Icons.flash_on,
+      'name': 'Claude',
+      'selected': false,
+      'description': 'Excellent at analysis & writing',
+      'tokens': '100K context',
+      'speed': 'Fast',
     },
     {
-      'name': 'Gemini 1.5 Pro',
-      'description': 'Advanced model for complex reasoning.',
-      'cost': '2 Tokens',
-      'icon': Icons.psychology,
-    },
-    {
-      'name': 'Claude 3 Haiku',
-      'description': 'Efficient and precise responses.',
-      'cost': '1 Token',
-      'icon': Icons.brightness_auto,
-    },
-    {
-      'name': 'Claude 3.5 Sonnet',
-      'description': 'Advanced language understanding and generation.',
-      'cost': '2 Tokens',
-      'icon': Icons.brightness_7,
+      'name': 'Gemini',
+      'selected': false,
+      'description': 'Strong at coding & mathematics',
+      'tokens': '32K context',
+      'speed': 'Fast',
     },
   ];
+  final int _tokenCount = 30;
+
+  String get _selectedModel {
+    final selected = _aiModels.firstWhere((model) => model['selected'] == true);
+    return selected['name'];
+  }
 
   final List<Map<String, dynamic>> _promptTemplates = [
     {
@@ -108,85 +100,149 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
     }
   }
 
-  void _handleModelSelect(String model) {
+  void _changeAIModel(String modelName) {
     setState(() {
-      _selectedModel = model;
-      _showModelSelector = false;
+      for (var model in _aiModels) {
+        model['selected'] = model['name'] == modelName;
+      }
     });
+    Navigator.of(context).pop();
   }
 
-  void _handlePromptSelect(String prompt) {
-    setState(() {
-      _messageController.text = prompt;
-    });
+  void _showModelSelectionDialog() {
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text(
+              "Select AI Model",
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: _aiModels.length,
+                separatorBuilder: (context, index) => const Divider(height: 1),
+                itemBuilder: (context, index) {
+                  final model = _aiModels[index];
+                  return ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    title: Row(
+                      children: [
+                        Text(
+                          model['name'],
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color:
+                                model['selected']
+                                    ? Colors.blue.withOpacity(0.1)
+                                    : Colors.grey.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            model['speed'],
+                            style: TextStyle(
+                              fontSize: 12,
+                              color:
+                                  model['selected']
+                                      ? Colors.blue
+                                      : Colors.grey[600],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 4),
+                        Text(
+                          model['description'],
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          model['tokens'],
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[500],
+                          ),
+                        ),
+                      ],
+                    ),
+                    leading: Radio<String>(
+                      value: model['name'],
+                      groupValue: _selectedModel,
+                      onChanged: (value) => _changeAIModel(value!),
+                    ),
+                    onTap: () => _changeAIModel(model['name']),
+                    selected: model['selected'],
+                    selectedTileColor: Colors.blue.withOpacity(0.05),
+                  );
+                },
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text("Cancel"),
+              ),
+            ],
+          ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: GestureDetector(
-          onTap: () {
-            setState(() {
-              _showModelSelector = !_showModelSelector;
-            });
-          },
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                _aiModels.firstWhere(
-                  (m) => m['name'] == _selectedModel,
-                )['icon'],
-                size: 20,
-                color: const Color(0xFF1A1A2E),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                _selectedModel,
-                style: const TextStyle(
-                  color: Color(0xFF1A1A2E),
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const Icon(
-                Icons.keyboard_arrow_down,
-                size: 20,
-                color: Color(0xFF1A1A2E),
-              ),
-            ],
-          ),
-        ),
-        centerTitle: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.menu),
-            color: const Color(0xFF1A1A2E),
-            onPressed: () {
-              Scaffold.of(context).openEndDrawer();
-            },
-          ),
-        ],
-      ),
-      endDrawer: const AppSidebar(),
-      body: Stack(
+    return BaseScreen(
+      title: 'Chat AI',
+      body: Column(
         children: [
-          Column(
-            children: [
-              Expanded(
-                child:
-                    _showWelcomeMessage
-                        ? _buildWelcomeMessage()
-                        : _buildChatMessages(),
+          // Model selector centered below title
+          Center(
+            child: TextButton(
+              onPressed: _showModelSelectionDialog,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _selectedModel,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black,
+                    ),
+                  ),
+                  const Icon(Icons.arrow_drop_down, color: Colors.black),
+                ],
               ),
-              _buildChatInput(),
-            ],
+            ),
           ),
-          if (_showModelSelector) _buildModelSelector(),
+          // Existing chat content
+          Expanded(
+            child:
+                _showWelcomeMessage
+                    ? _buildWelcomeMessage()
+                    : _buildChatMessages(),
+          ),
+          _buildChatInput(),
         ],
       ),
     );
@@ -315,18 +371,6 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 8,
-                const SizedBox(height: 24),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2D2D5F).withAlpha(26),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Text(
-                    'Please login to save your chats',
-                    style: TextStyle(
-                      color: Color(0xFF2D2D5F),
-                      fontWeight: FontWeight.w500,
                     ),
                   ),
                   child: const Row(
@@ -346,41 +390,9 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
     );
   }
 
-  Widget _buildModelSelector() {
-    return Positioned(
-      top: 0,
-      left: 0,
-      right: 0,
-      child: Container(
-        color: Colors.white,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: Text(
-                'Base AI Models',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.grey,
-                ),
-              ),
-            ),
-            ..._aiModels.map(
-              (model) => ModelSelector(
-                name: model['name'],
-                description: model['description'],
-                cost: model['cost'],
-                icon: model['icon'],
-                isSelected: _selectedModel == model['name'],
-                onTap: () => _handleModelSelect(model['name']),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  void _handlePromptSelect(String prompt) {
+    setState(() {
+      _messageController.text = prompt;
+    });
   }
 }

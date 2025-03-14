@@ -1,6 +1,5 @@
 import 'package:amd_chat_ai/presentation/screens/widgets/authen/progress_dots.dart';
 import 'package:flutter/material.dart';
-import '../widgets/base_screen.dart';
 
 class ForgetPasswordScreen extends StatefulWidget {
   const ForgetPasswordScreen({super.key});
