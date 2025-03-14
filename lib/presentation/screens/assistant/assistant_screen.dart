@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:amd_chat_ai/presentation/screens/widgets/base_screen.dart';
+import 'package:amd_chat_ai/presentation/screens/widgets/new_button_widget.dart';
 
 class AssistantScreen extends StatefulWidget {
   const AssistantScreen({super.key});
@@ -160,75 +161,38 @@ class _AssistantScreenState extends State<AssistantScreen> {
     // Sample data for assistant items
     final assistantItems = [
       {
-        'name': 'Wade Warrenaaaaaaaaaaaaaaaaaaaaaa',
+        'name': 'Assistant 1',
         'description': 'Travel Bot',
         'avatarColor': Colors.lightBlue,
       },
       {
-        'name': 'Wade Warren',
+        'name': 'Assistant 2',
         'description': 'Work Bot',
         'avatarColor': Colors.deepPurple,
       },
       {
-        'name': 'Esther Howard',
+        'name': 'Assistant 3',
         'description': 'Study Bot',
         'avatarColor': Colors.teal,
       },
       {
-        'name': 'Cameron Edw',
-        'description': '24ctm',
+        'name': 'Assistant 4',
+        'description': 'Entertainment Bot',
         'avatarColor': Colors.amber,
       },
       {
-        'name': 'Robert Fox',
-        'description': 'birhan628@gmail.com',
+        'name': 'Assistant 5',
+        'description': 'General Bot',
         'avatarColor': Colors.brown,
       },
     ];
 
-    final newAssistantButton = Container(
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF415DF2), Color(0xFF5B8AF5)],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF415DF2).withAlpha(77),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            Navigator.of(context).pushNamed('/create-assistant');
-          },
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.add_circle_outline, color: Colors.white, size: 20),
-                SizedBox(width: 4),
-                Text(
-                  'New',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+    final newAssistantButton = NewButton(
+      onTap: () {
+        Navigator.of(context).pushNamed('/create-assistant');
+      },
+      label: 'New',
+      icon: Icons.add_circle_outline,
     );
 
     return BaseScreen(
