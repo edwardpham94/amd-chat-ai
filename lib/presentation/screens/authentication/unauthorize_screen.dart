@@ -75,41 +75,81 @@ class UnauthorizeScreen extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              ElevatedButton(
+              OutlinedButton(
                 onPressed: () {
-                  // Google sign in would typically be implemented here
-                  // For now, we'll just navigate to the login screen
-                  Navigator.pushNamed(context, '/login');
+                  // Handle Google sign in
                 },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF6C63FF),
-                  minimumSize: const Size(double.infinity, 50),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 52),
+                  side: BorderSide(color: Colors.grey[200]!),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
-                    Icon(Icons.g_mobiledata, size: 24),
-                    SizedBox(width: 8),
-                    Text(
+                  children: [
+                    Image.network(
+                      'https://www.google.com/favicon.ico',
+                      height: 18,
+                      width: 18,
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Icon(
+                          Icons.g_mobiledata,
+                          size: 24,
+                          color: Colors.red,
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
                       'Continue With Google',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
+                        color: Color(0xFF1A1A2E),
                       ),
                     ),
                   ],
                 ),
               ),
+              // ElevatedButton(
+              //   onPressed: () {
+              //     // Google sign in would typically be implemented here
+              //     // For now, we'll just navigate to the login screen
+              //     Navigator.pushNamed(context, '/login');
+              //   },
+              //   style: ElevatedButton.styleFrom(
+              //     backgroundColor: const Color(0xFF6C63FF),
+              //     minimumSize: const Size(double.infinity, 50),
+              //     shape: RoundedRectangleBorder(
+              //       borderRadius: BorderRadius.circular(12),
+              //     ),
+              //   ),
+              //   child: Row(
+              //     mainAxisAlignment: MainAxisAlignment.center,
+              //     children: const [
+              //       Icon(Icons.g_mobiledata, size: 24),
+              //       SizedBox(width: 8),
+              //       Text(
+              //         'Continue With Google',
+              //         style: TextStyle(
+              //           fontSize: 16,
+              //           fontWeight: FontWeight.w500,
+              //           color: Colors.white,
+              //         ),
+              //       ),
+              //     ],
+              //   ),
+              // ),
+
               const SizedBox(height: 12),
               ElevatedButton(
                 onPressed: () {
                   Navigator.pushNamed(context, '/signup');
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFF5F3FF),
+                  backgroundColor: const Color.fromARGB(0, 255, 248, 248),
                   minimumSize: const Size(double.infinity, 50),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -121,7 +161,7 @@ class UnauthorizeScreen extends StatelessWidget {
                     Icon(
                       Icons.email_outlined,
                       size: 20,
-                      color: Color(0xFF6C63FF),
+                      color: Color.fromARGB(255, 0, 0, 0),
                     ),
                     SizedBox(width: 8),
                     Text(

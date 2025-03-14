@@ -19,7 +19,9 @@ class TagChip extends StatelessWidget {
       selected: isSelected,
       onSelected: onSelected,
       backgroundColor: Colors.white,
-      selectedColor: const Color(0xFF6C63FF).withOpacity(0.1),
+      selectedColor: const Color(
+        0xFF6C63FF,
+      ).withAlpha(26),
       side: BorderSide(
         color: isSelected ? const Color(0xFF6C63FF) : Colors.grey.shade300,
       ),

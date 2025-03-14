@@ -30,7 +30,9 @@ class ChatMessage extends StatelessWidget {
           if (!isUser && showAvatar)
             CircleAvatar(
               radius: 16,
-              backgroundColor: const Color(0xFF6C63FF).withOpacity(0.1),
+              backgroundColor: const Color(
+                0xFF6C63FF,
+              ).withAlpha(26),
               child: const Icon(
                 Icons.smart_toy,
                 size: 16,
@@ -50,7 +52,9 @@ class ChatMessage extends StatelessWidget {
                 borderRadius: BorderRadius.circular(18),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withAlpha(
+                      13,
+                    ), 
                     blurRadius: 2,
                     offset: const Offset(0, 1),
                   ),
@@ -72,7 +76,9 @@ class ChatMessage extends StatelessWidget {
                     style: TextStyle(
                       color:
                           isUser
-                              ? Colors.white.withOpacity(0.7)
+                              ? Colors.white.withAlpha(
+                                179,
+                              ) 
                               : Colors.black54,
                       fontSize: 12,
                     ),

@@ -1,4 +1,7 @@
+import 'package:amd_chat_ai/presentation/screens/authentication/enter_otp_screen.dart';
+import 'package:amd_chat_ai/presentation/screens/authentication/forget_password_screen.dart';
 import 'package:amd_chat_ai/presentation/screens/authentication/login_screen_v1.dart';
+import 'package:amd_chat_ai/presentation/screens/authentication/reset_password_screen.dart';
 import 'package:amd_chat_ai/presentation/screens/authentication/signup_screen_v1.dart';
 import 'package:amd_chat_ai/presentation/screens/authentication/unauthorize_screen.dart';
 import 'package:amd_chat_ai/presentation/screens/chat-ai/chat_ai_screen.dart';
@@ -29,7 +32,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      initialRoute: '/account-settings',
+      initialRoute: '/chat-ai',
       routes: {
         '/': (context) => const UnauthorizeScreen(),
         '/login': (context) => const LoginScreen(),
@@ -45,7 +48,10 @@ class MyApp extends StatelessWidget {
         '/chat-ai': (context) => const ChatAIScreen(),
         '/profile': (context) => const ProfileScreen(),
         '/account-settings':
-            (context) => const AccountSettingsScreen(), // Updated route
+            (context) => const AccountSettingsScreen(),
+        '/forget-password': (context) => const ForgetPasswordScreen(),
+        '/enter-otp': (context) => const EnterOTPScreen(),
+        '/reset-password': (context) => const ResetPasswordScreen(),
       },
     );
   }
