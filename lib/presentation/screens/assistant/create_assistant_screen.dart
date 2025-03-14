@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:amd_chat_ai/presentation/screens/widgets/base_screen.dart';
+import 'package:amd_chat_ai/presentation/screens/widgets/primary_button.dart';
 
 class CreateAssistantScreen extends StatefulWidget {
   const CreateAssistantScreen({super.key});
@@ -306,7 +307,8 @@ class _CreateAssistantScreenState extends State<CreateAssistantScreen> {
                     ),
                   ],
                 ),
-                child: ElevatedButton(
+                child: PrimaryButton(
+                  label: 'Create Assistant',
                   onPressed: () {
                     // Handle create assistant logic
                     final assistant = {
@@ -319,23 +321,6 @@ class _CreateAssistantScreenState extends State<CreateAssistantScreen> {
                     debugPrint('Created Assistant: $assistant');
                     Navigator.pop(context);
                   },
-                  style: ElevatedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    backgroundColor: const Color(0xFF415DF2),
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  child: const Text(
-                    'Create Assistant',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
                 ),
               ),
 
