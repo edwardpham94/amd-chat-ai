@@ -1,9 +1,9 @@
+import 'package:amd_chat_ai/presentation/screens/SplashScreen.dart';
 import 'package:amd_chat_ai/presentation/screens/authentication/enter_otp_screen.dart';
 import 'package:amd_chat_ai/presentation/screens/authentication/forget_password_screen.dart';
 import 'package:amd_chat_ai/presentation/screens/authentication/login_screen_v1.dart';
 import 'package:amd_chat_ai/presentation/screens/authentication/reset_password_screen.dart';
 import 'package:amd_chat_ai/presentation/screens/authentication/signup_screen_v1.dart';
-import 'package:amd_chat_ai/presentation/screens/authentication/unauthorize_screen.dart';
 import 'package:amd_chat_ai/presentation/screens/chat-ai/chat_ai_screen.dart';
 import 'package:amd_chat_ai/presentation/screens/knowledge/create_knowledge_screen.dart';
 import 'package:amd_chat_ai/presentation/screens/knowledge/knowledge_screen.dart';
@@ -34,7 +34,7 @@ class MyApp extends StatelessWidget {
       ),
       initialRoute: '/chat-ai',
       routes: {
-        '/': (context) => const UnauthorizeScreen(),
+        '/': (context) => const SplashScreen(),
         '/login': (context) => const LoginScreen(),
         '/signup': (context) => const SignUpScreen(),
         '/knowledge': (context) => const KnowledgeScreen(),
