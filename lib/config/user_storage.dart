@@ -23,4 +23,11 @@ class UserStorage {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('user_id');
   }
+
+  static Future<void> deleteTokens() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('access_token');
+    await prefs.remove('refresh_token');
+    await prefs.remove('user_id');
+  }
 }

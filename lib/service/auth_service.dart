@@ -24,4 +24,50 @@ class AuthService {
       return null;
     }
   }
+
+
+  Future<SignUpResponse?> login(String email, String password) async {
+    try {
+      final response = await DioClients.authClient.post(
+        '/api/v1/auth/password/sign-in',
+        data: {'email': email, 'password': password},
+      );
+      final signInResponse = SignUpResponse.fromJson(response.data);
+      await UserStorage.saveUserInfo(signInResponse);
+      return signInResponse;
+    } on DioException catch (e) {
+      print('Signin error: ${e.response?.data ?? e.message}');
+      return null;
+    }
+  }
+
+  Future<bool> logout() async {
+    try {
+      var accessToken = await UserStorage.getAccessToken();
+      var refreshToken = await UserStorage.getRefreshToken();
+
+      if (accessToken == null) {
+        print('Access token is null');
+        return false; 
+      }
+
+      final response = await DioClients.authClient.delete(
+        '/api/v1/auth/sessions/current',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $accessToken',
+            'X-Stack-Refresh-Token': refreshToken,
+          },
+        ),
+      );
+
+      final logoutResponse = SignUpResponse.fromJson(response.data);
+      
+      await UserStorage.deleteTokens();
+      return true;
+    } on DioException catch (e) {
+      print('Logout error: ${e.response?.data ?? e.message}');
+      return false;
+    }
+  }
 }

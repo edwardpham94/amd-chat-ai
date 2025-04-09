@@ -1,3 +1,5 @@
+import 'package:amd_chat_ai/config/user_storage.dart';
+import 'package:amd_chat_ai/service/auth_service.dart';
 import 'package:flutter/material.dart';
 
 class AppSidebar extends StatelessWidget {
@@ -92,9 +94,19 @@ class AppSidebar extends StatelessWidget {
             ListTile(
               leading: const Icon(Icons.logout),
               title: const Text('Logout'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushReplacementNamed(context, '/login');
+              onTap: () async {
+                final success = await AuthService().logout();
+
+                if (success) {
+                  Navigator.pop(context);
+                  Navigator.pushReplacementNamed(context, '/login');
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Logout failed. Please try again.'),
+                    ),
+                  );
+                }
               },
             ),
             const Spacer(),
