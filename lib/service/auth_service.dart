@@ -2,6 +2,7 @@ import 'package:amd_chat_ai/config/dio_clients.dart';
 import 'package:amd_chat_ai/config/user_storage.dart';
 import 'package:amd_chat_ai/model/SignUpResponse.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 class AuthService {
   Future<SignUpResponse?> signUp(String email, String password) async {
@@ -20,7 +21,7 @@ class AuthService {
       await UserStorage.saveUserInfo(signUpResponse);
       return signUpResponse;
     } on DioException catch (e) {
-      print('Signup error: ${e.response?.data ?? e.message}');
+      debugPrint('Signup error: ${e.response?.data ?? e.message}');
       return null;
     }
   }
@@ -35,7 +36,7 @@ class AuthService {
       await UserStorage.saveUserInfo(signInResponse);
       return signInResponse;
     } on DioException catch (e) {
-      print('Signin error: ${e.response?.data ?? e.message}');
+      debugPrint('Signin error: ${e.response?.data ?? e.message}');
       return null;
     }
   }
@@ -46,11 +47,11 @@ class AuthService {
       var refreshToken = await UserStorage.getRefreshToken();
 
       if (accessToken == null) {
-        print('Access token is null');
-        return false; 
+        debugPrint('Access token is null');
+        return false;
       }
 
-      final response = await DioClients.authClient.delete(
+      await DioClients.authClient.delete(
         '/api/v1/auth/sessions/current',
         data: {},
         options: Options(
@@ -60,14 +61,13 @@ class AuthService {
           },
         ),
       );
-
       final logoutResponse = SignUpResponse.fromJson(response.data);
-  
+ 
       await UserStorage.deleteTokens();
 
       return true;
     } on DioException catch (e) {
-      print('Logout error: ${e.response?.data ?? e.message}');
+      debugPrint('Logout error: ${e.response?.data ?? e.message}');
       return false;
     }
   }

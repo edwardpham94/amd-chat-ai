@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:amd_chat_ai/config/user_storage.dart';
 import 'package:amd_chat_ai/presentation/screens/widgets/base_screen.dart';
+import 'package:amd_chat_ai/service/prompt_service.dart';
 
 class UpdatePromptScreen extends StatefulWidget {
   const UpdatePromptScreen({super.key});
@@ -16,15 +18,36 @@ class _UpdatePromptScreenState extends State<UpdatePromptScreen>
   String? _selectedCategory;
   String? _selectedLanguage;
   bool _isPublic = false;
+  String? _promptId;
+  String? _promptUserId;
+  bool _isLoading = false;
+  bool _canEdit = false;
+
+  final PromptService _promptService = PromptService();
+
+  // Method to check if current user is the owner of the prompt
+  Future<void> _checkUserPermission() async {
+    final currentUserId = await UserStorage.getUserId();
+    setState(() {
+      _canEdit = currentUserId == _promptUserId;
+    });
+    debugPrint(
+      'Current user: $currentUserId, Prompt user: $_promptUserId, Can edit: $_canEdit',
+    );
+  }
 
   final List<String> _categories = [
-    'General',
-    'Coding',
-    'Writing',
-    'Business',
-    'Education',
-    'Art',
-    'Other',
+    'business',
+    'career',
+    'chatbot',
+    'coding',
+    'education',
+    'fun',
+    'marketing',
+    'productivity',
+    'seo',
+    'writing',
+    'other',
   ];
 
   final List<String> _languages = [
@@ -47,14 +70,36 @@ class _UpdatePromptScreenState extends State<UpdatePromptScreen>
           ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
 
       if (promptData != null) {
+        // Get category and ensure it's in the list
+        String category = promptData['category'] ?? 'other';
+        if (!_categories.contains(category)) {
+          category = 'other';
+        }
+
+        // Get language and ensure it's in the list
+        String language = promptData['language'] ?? 'English';
+        if (!_languages.contains(language)) {
+          language = 'English';
+        }
+
         setState(() {
+          _promptId = promptData['id'];
+          _promptUserId = promptData['userId'];
           _titleController.text = promptData['title'] ?? '';
           _contentController.text = promptData['content'] ?? '';
           _descriptionController.text = promptData['description'] ?? '';
-          _selectedCategory = promptData['category'] ?? 'General';
-          _selectedLanguage = promptData['language'] ?? 'English';
+          _selectedCategory = category;
+          _selectedLanguage = language;
           _isPublic = promptData['isPublic'] ?? false;
         });
+
+        debugPrint('Loaded prompt data: $promptData');
+        debugPrint(
+          'Selected category: $_selectedCategory, Selected language: $_selectedLanguage',
+        );
+
+        // Check if current user is the owner of the prompt
+        _checkUserPermission();
       }
     });
   }
@@ -65,6 +110,75 @@ class _UpdatePromptScreenState extends State<UpdatePromptScreen>
     _contentController.dispose();
     _descriptionController.dispose();
     super.dispose();
+  }
+
+  Future<void> _updatePrompt() async {
+    // Validate required fields according to API requirements
+    if (_descriptionController.text.isEmpty || _promptId == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Description is required')));
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Ensure category and language are valid
+      String category = _selectedCategory ?? 'other';
+      if (!_categories.contains(category)) {
+        category = 'other';
+      }
+
+      String language = _selectedLanguage ?? 'English';
+      if (!_languages.contains(language)) {
+        language = 'English';
+      }
+
+      // Description validation already done at the beginning of the method
+
+      final success = await _promptService.updatePrompt(
+        promptId: _promptId!,
+        title: _titleController.text.isNotEmpty ? _titleController.text : null,
+        content:
+            _contentController.text.isNotEmpty ? _contentController.text : null,
+        description: _descriptionController.text,
+        category: category,
+        language: language,
+        isPublic: _isPublic,
+      );
+
+      debugPrint('Update prompt with category: $category, language: $language');
+
+      if (success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Prompt updated successfully')),
+          );
+          Navigator.pop(context, true); // Return true to indicate success
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to update prompt')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error updating prompt: $e')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -79,6 +193,32 @@ class _UpdatePromptScreenState extends State<UpdatePromptScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Show a message if the user can't edit the prompt
+              if (!_canEdit)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.red.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.warning_amber_rounded,
+                        color: Colors.red.shade700,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'You cannot edit this prompt because you are not the owner.',
+                          style: TextStyle(color: Colors.red.shade700),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               // Title
               _buildSectionTitle('Title'),
               _buildTextField(
@@ -127,7 +267,11 @@ class _UpdatePromptScreenState extends State<UpdatePromptScreen>
                   ],
                 ),
                 child: DropdownButtonFormField<String>(
-                  value: _selectedCategory,
+                  value:
+                      _selectedCategory != null &&
+                              _categories.contains(_selectedCategory)
+                          ? _selectedCategory
+                          : 'other',
                   decoration: InputDecoration(
                     prefixIcon: const Icon(
                       Icons.category_outlined,
@@ -150,11 +294,14 @@ class _UpdatePromptScreenState extends State<UpdatePromptScreen>
                           child: Text(category),
                         );
                       }).toList(),
-                  onChanged: (String? newValue) {
-                    setState(() {
-                      _selectedCategory = newValue;
-                    });
-                  },
+                  onChanged:
+                      _canEdit
+                          ? (String? newValue) {
+                            setState(() {
+                              _selectedCategory = newValue;
+                            });
+                          }
+                          : null,
                 ),
               ),
 
@@ -175,7 +322,11 @@ class _UpdatePromptScreenState extends State<UpdatePromptScreen>
                   ],
                 ),
                 child: DropdownButtonFormField<String>(
-                  value: _selectedLanguage,
+                  value:
+                      _selectedLanguage != null &&
+                              _languages.contains(_selectedLanguage)
+                          ? _selectedLanguage
+                          : 'English',
                   decoration: InputDecoration(
                     prefixIcon: const Icon(
                       Icons.language,
@@ -198,11 +349,14 @@ class _UpdatePromptScreenState extends State<UpdatePromptScreen>
                           child: Text(language),
                         );
                       }).toList(),
-                  onChanged: (String? newValue) {
-                    setState(() {
-                      _selectedLanguage = newValue;
-                    });
-                  },
+                  onChanged:
+                      _canEdit
+                          ? (String? newValue) {
+                            setState(() {
+                              _selectedLanguage = newValue;
+                            });
+                          }
+                          : null,
                 ),
               ),
 
@@ -230,11 +384,14 @@ class _UpdatePromptScreenState extends State<UpdatePromptScreen>
                   title: Text(_isPublic ? 'Public' : 'Private'),
                   trailing: Switch(
                     value: _isPublic,
-                    onChanged: (bool value) {
-                      setState(() {
-                        _isPublic = value;
-                      });
-                    },
+                    onChanged:
+                        _canEdit
+                            ? (bool value) {
+                              setState(() {
+                                _isPublic = value;
+                              });
+                            }
+                            : null,
                     activeColor: const Color(0xFF415DF2),
                   ),
                   shape: RoundedRectangleBorder(
@@ -260,20 +417,7 @@ class _UpdatePromptScreenState extends State<UpdatePromptScreen>
                   ],
                 ),
                 child: ElevatedButton(
-                  onPressed: () {
-                    // Handle update prompt logic
-                    final prompt = {
-                      'title': _titleController.text,
-                      'content': _contentController.text,
-                      'description': _descriptionController.text,
-                      'category': _selectedCategory,
-                      'language': _selectedLanguage,
-                      'isPublic': _isPublic,
-                    };
-
-                    debugPrint('Updated prompt: $prompt');
-                    Navigator.pop(context);
-                  },
+                  onPressed: (_isLoading || !_canEdit) ? null : _updatePrompt,
                   style: ElevatedButton.styleFrom(
                     foregroundColor: Colors.white,
                     backgroundColor: const Color(0xFF415DF2),
@@ -283,14 +427,33 @@ class _UpdatePromptScreenState extends State<UpdatePromptScreen>
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  child: const Text(
-                    'Update',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
+                  child:
+                      _isLoading
+                          ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                          : !_canEdit
+                          ? const Text(
+                            'Cannot edit - Not your prompt',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.5,
+                            ),
+                          )
+                          : const Text(
+                            'Update',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
                 ),
               ),
             ],
@@ -334,7 +497,11 @@ class _UpdatePromptScreenState extends State<UpdatePromptScreen>
       child: TextField(
         controller: controller,
         maxLines: maxLines,
-        style: const TextStyle(fontSize: 16),
+        enabled: _canEdit,
+        style: TextStyle(
+          fontSize: 16,
+          color: _canEdit ? Colors.black : Colors.grey,
+        ),
         decoration: InputDecoration(
           hintText: hintText,
           hintStyle: TextStyle(color: Colors.grey[400]),

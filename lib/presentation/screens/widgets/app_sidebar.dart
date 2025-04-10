@@ -95,18 +95,9 @@ class AppSidebar extends StatelessWidget {
               leading: const Icon(Icons.logout),
               title: const Text('Logout'),
               onTap: () async {
-                final success = await AuthService().logout();
-
-                if (success) {
-                  Navigator.pop(context);
-                  Navigator.pushReplacementNamed(context, '/login');
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Logout failed. Please try again.'),
-                    ),
-                  );
-                }
+                await AuthService().logout();
+                Navigator.pop(context);
+                Navigator.pushReplacementNamed(context, '/login');
               },
             ),
             const Spacer(),

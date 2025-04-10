@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:amd_chat_ai/presentation/screens/widgets/base_screen.dart';
 import 'package:amd_chat_ai/presentation/screens/widgets/primary_button.dart';
+import 'package:amd_chat_ai/service/prompt_service.dart';
 
 class CreatePromptScreen extends StatefulWidget {
   const CreatePromptScreen({super.key});
@@ -14,15 +15,34 @@ class _CreatePromptScreenState extends State<CreatePromptScreen> {
   final _contentController = TextEditingController();
   final _descriptionController = TextEditingController();
   String? _selectedCategory;
+  String? _selectedLanguage;
   bool _isPublic = false;
+  bool _isLoading = false;
+
+  final PromptService _promptService = PromptService();
 
   final List<String> _categories = [
-    'General',
-    'Coding',
-    'Writing',
-    'Business',
-    'Education',
-    'Art',
+    'business',
+    'career',
+    'chatbot',
+    'coding',
+    'education',
+    'fun',
+    'marketing',
+    'productivity',
+    'seo',
+    'writing',
+    'other',
+  ];
+
+  final List<String> _languages = [
+    'English',
+    'Spanish',
+    'French',
+    'German',
+    'Chinese',
+    'Japanese',
+    'Korean',
     'Other',
   ];
 
@@ -32,6 +52,63 @@ class _CreatePromptScreenState extends State<CreatePromptScreen> {
     _contentController.dispose();
     _descriptionController.dispose();
     super.dispose();
+  }
+
+  // Method to create a new prompt
+  Future<void> _createPrompt() async {
+    // Validate inputs
+    if (_titleController.text.isEmpty ||
+        _contentController.text.isEmpty ||
+        _descriptionController.text.isEmpty ||
+        _selectedCategory == null ||
+        _selectedLanguage == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill in all required fields')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final success = await _promptService.createPrompt(
+        title: _titleController.text,
+        content: _contentController.text,
+        description: _descriptionController.text,
+        category: _selectedCategory!,
+        language: _selectedLanguage!,
+        isPublic: _isPublic,
+      );
+
+      if (success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Prompt created successfully')),
+          );
+          Navigator.pop(context, true); // Return true to indicate success
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to create prompt')),
+          );
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error creating prompt: $e')));
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -118,6 +195,45 @@ class _CreatePromptScreenState extends State<CreatePromptScreen> {
 
               const SizedBox(height: 24),
 
+              // Language Dropdown
+              _buildSectionTitle('Language'),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withAlpha(13),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: _selectedLanguage,
+                    hint: const Text('Select a language'),
+                    isExpanded: true,
+                    icon: const Icon(Icons.arrow_drop_down),
+                    items:
+                        _languages.map((String language) {
+                          return DropdownMenuItem<String>(
+                            value: language,
+                            child: Text(language),
+                          );
+                        }).toList(),
+                    onChanged: (String? newValue) {
+                      setState(() {
+                        _selectedLanguage = newValue;
+                      });
+                    },
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
               // Public/Private Toggle
               _buildSectionTitle('Visibility'),
               Container(
@@ -159,22 +275,12 @@ class _CreatePromptScreenState extends State<CreatePromptScreen> {
               const SizedBox(height: 48),
 
               // Create Button
-              PrimaryButton(
-                label: 'Create Prompt',
-                onPressed: () {
-                  // Handle create prompt logic
-                  final prompt = {
-                    'title': _titleController.text,
-                    'content': _contentController.text,
-                    'description': _descriptionController.text,
-                    'category': _selectedCategory,
-                    'isPublic': _isPublic,
-                  };
-
-                  debugPrint('Created prompt: $prompt');
-                  Navigator.pop(context);
-                },
-              ),
+              _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : PrimaryButton(
+                    label: 'Create Prompt',
+                    onPressed: _createPrompt,
+                  ),
 
               const SizedBox(height: 24),
             ],
