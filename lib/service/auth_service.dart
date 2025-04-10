@@ -61,8 +61,10 @@ class AuthService {
           },
         ),
       );
-
+      final logoutResponse = SignUpResponse.fromJson(response.data);
+ 
       await UserStorage.deleteTokens();
+
       return true;
     } on DioException catch (e) {
       debugPrint('Logout error: ${e.response?.data ?? e.message}');

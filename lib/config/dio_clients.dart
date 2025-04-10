@@ -105,7 +105,10 @@ class DioClients {
   static final Dio jarvisClient = Dio(
       BaseOptions(
         baseUrl: ApiConfig.jarvisBaseUrl,
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          'x-jarvis-guid': '361331f8-fc9b-4dfe-a3f7-6d9a1e8b289b',
+        },
       ),
     )
     ..interceptors.add(
