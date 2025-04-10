@@ -30,4 +30,9 @@ class UserStorage {
     await prefs.remove('refresh_token');
     await prefs.remove('user_id');
   }
+
+  static Future<void> updateAccessToken(String newToken) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('access_token', newToken);
+  }
 }
