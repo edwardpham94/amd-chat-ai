@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:amd_chat_ai/config/user_storage.dart';
+import 'package:amd_chat_ai/model/prompt.dart';
 import 'package:amd_chat_ai/presentation/screens/widgets/base_screen.dart';
 import 'package:amd_chat_ai/presentation/screens/widgets/new_button_widget.dart';
+import 'package:amd_chat_ai/service/prompt_service.dart';
 
 class PromptScreen extends StatefulWidget {
   const PromptScreen({super.key});
@@ -12,7 +15,173 @@ class PromptScreen extends StatefulWidget {
 class _PromptScreenState extends State<PromptScreen> {
   bool isPrivateSelected = true;
   bool showFavoritesOnly = false;
-  Set<String> favoritePrompts = {};
+  bool _isLoading = true;
+  bool _hasError = false;
+  final TextEditingController _searchController = TextEditingController();
+
+  // Category filter
+  String? _selectedCategory;
+  final List<String> _categories = [
+    'All',
+    'business',
+    'career',
+    'chatbot',
+    'coding',
+    'education',
+    'fun',
+    'marketing',
+    'productivity',
+    'seo',
+    'writing',
+    'other',
+  ];
+
+  final PromptService _promptService = PromptService();
+  List<Prompt> _prompts = [];
+  int _currentOffset = 0;
+  final int _limit = 10;
+  bool _hasMorePrompts = true;
+  int _totalPrompts = 0; // Total number of prompts available
+
+  // Focus node to detect when screen regains focus
+  final FocusNode _screenFocusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedCategory = 'All';
+    _checkUserAndLoadPrompts();
+
+    // Add a listener to reload data when the screen regains focus
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _screenFocusNode.addListener(() {
+        if (_screenFocusNode.hasFocus) {
+          debugPrint('Prompt screen regained focus, refreshing data');
+          _loadPrompts(refresh: true);
+        }
+      });
+      // Request focus to trigger the listener
+      _screenFocusNode.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _screenFocusNode.dispose();
+    super.dispose();
+  }
+
+  Future<void> _checkUserAndLoadPrompts() async {
+    debugPrint('Checking user authentication status');
+    final userId = await UserStorage.getUserId();
+    final accessToken = await UserStorage.getAccessToken();
+
+    debugPrint('User ID: $userId, Access Token exists: ${accessToken != null}');
+
+    if (userId == null || accessToken == null) {
+      debugPrint('User not logged in, navigating to login screen');
+      if (mounted) {
+        Navigator.of(context).pushReplacementNamed('/login');
+      }
+      return;
+    }
+
+    // User is logged in, load prompts
+    _loadPrompts();
+  }
+
+  // Handle search text changes
+  void _handleSearchChanged(String value) {
+    // Debounce search to avoid too many API calls
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (_searchController.text == value) {
+        debugPrint('Search query: $value');
+        _loadPrompts(refresh: true);
+      }
+    });
+  }
+
+  // Handle category selection
+  void _handleCategoryChanged(String? newValue) {
+    setState(() {
+      _selectedCategory = newValue;
+    });
+    debugPrint('Selected category: $newValue');
+    _loadPrompts(refresh: true);
+  }
+
+  Future<void> _loadPrompts({bool refresh = false}) async {
+    debugPrint("Loading prompts - refresh: $refresh");
+    if (refresh) {
+      setState(() {
+        _currentOffset = 0;
+        _hasMorePrompts = true;
+        _isLoading = true;
+        _hasError = false;
+      });
+    } else if (!_hasMorePrompts || _isLoading) {
+      return;
+    } else {
+      setState(() {
+        _isLoading = true;
+        _hasError = false;
+      });
+    }
+
+    try {
+      debugPrint(
+        "Making API call to fetch prompts with offset: $_currentOffset",
+      );
+      final searchQuery = _searchController.text.trim();
+      final response = await _promptService.getPrompts(
+        offset: _currentOffset,
+        limit: _limit,
+        isPublic: !isPrivateSelected,
+        isFavorite: showFavoritesOnly ? true : null,
+        searchQuery: searchQuery.isNotEmpty ? searchQuery : null,
+        category:
+            (_selectedCategory != null && _selectedCategory != 'All')
+                ? _selectedCategory
+                : null,
+      );
+
+      if (response != null) {
+        debugPrint(
+          "API response received: ${response.items.length} items, hasNext: ${response.hasNext}",
+        );
+        setState(() {
+          if (refresh || _currentOffset == 0) {
+            _prompts = response.items;
+          } else {
+            _prompts.addAll(response.items);
+          }
+          _hasMorePrompts = response.hasNext;
+          _currentOffset += response.items.length;
+          _totalPrompts = response.total > 0 ? response.total : _prompts.length;
+          debugPrint(
+            "Updated offset to: $_currentOffset, total from API: ${response.total}, using: $_totalPrompts",
+          );
+          _isLoading = false;
+        });
+        debugPrint("Updated state: ${_prompts.length} total prompts");
+      } else {
+        debugPrint("API response is null");
+        setState(() {
+          _hasError = true;
+          _isLoading = false;
+          _totalPrompts = 0; // Reset total count on error
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _hasError = true;
+        _isLoading = false;
+        _totalPrompts = 0; // Reset total count on error
+      });
+      debugPrint('Error loading prompts: $e');
+    }
+  }
 
   void _showDeleteConfirmation(BuildContext context, String itemName) {
     showGeneralDialog(
@@ -112,17 +281,42 @@ class _PromptScreenState extends State<PromptScreen> {
                         Expanded(
                           child: ElevatedButton(
                             onPressed: () {
-                              Navigator.of(context).pop();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('$itemName deleted'),
-                                  behavior: SnackBarBehavior.floating,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
+                              // Find the prompt ID by title
+                              final promptId =
+                                  _prompts
+                                      .firstWhere(
+                                        (p) => p.title == itemName,
+                                        orElse:
+                                            () => Prompt(
+                                              id: '',
+                                              title: '',
+                                              content: '',
+                                              description: '',
+                                              category: '',
+                                              language: '',
+                                              isPublic: false,
+                                              isFavorite: false,
+                                              userId: '',
+                                              userName: '',
+                                              createdAt: DateTime.now(),
+                                              updatedAt: DateTime.now(),
+                                            ),
+                                      )
+                                      .id;
+
+                              if (promptId.isNotEmpty) {
+                                _deletePrompt(promptId, itemName);
+                              } else {
+                                Navigator.of(context).pop();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Could not find prompt to delete',
+                                    ),
+                                    behavior: SnackBarBehavior.floating,
                                   ),
-                                  backgroundColor: Colors.black87,
-                                ),
-                              );
+                                );
+                              }
                             },
                             style: ElevatedButton.styleFrom(
                               foregroundColor: Colors.white,
@@ -160,361 +354,596 @@ class _PromptScreenState extends State<PromptScreen> {
     );
   }
 
-  void _toggleFavorite(String promptId) {
+  Future<void> _toggleFavorite(String promptId, bool currentStatus) async {
+    debugPrint(
+      'PromptScreen: Toggling favorite for prompt $promptId, current status: $currentStatus',
+    );
+
+    // Optimistically update UI
     setState(() {
-      if (favoritePrompts.contains(promptId)) {
-        favoritePrompts.remove(promptId);
-      } else {
-        favoritePrompts.add(promptId);
+      final promptIndex = _prompts.indexWhere((p) => p.id == promptId);
+      if (promptIndex != -1) {
+        final updatedPrompt = Prompt(
+          id: _prompts[promptIndex].id,
+          title: _prompts[promptIndex].title,
+          content: _prompts[promptIndex].content,
+          description: _prompts[promptIndex].description,
+          category: _prompts[promptIndex].category,
+          language: _prompts[promptIndex].language,
+          isPublic: _prompts[promptIndex].isPublic,
+          isFavorite: !currentStatus,
+          userId: _prompts[promptIndex].userId,
+          userName: _prompts[promptIndex].userName,
+          createdAt: _prompts[promptIndex].createdAt,
+          updatedAt: _prompts[promptIndex].updatedAt,
+        );
+        _prompts[promptIndex] = updatedPrompt;
+        debugPrint(
+          'PromptScreen: UI updated optimistically, new favorite status: ${!currentStatus}',
+        );
       }
     });
+
+    // Call API to update favorite status
+    try {
+      debugPrint(
+        'PromptScreen: Calling API to toggle favorite status to ${!currentStatus}',
+      );
+      final success = await _promptService.toggleFavorite(
+        promptId,
+        !currentStatus,
+      );
+
+      if (success) {
+        debugPrint('PromptScreen: Successfully toggled favorite status');
+        // If we're showing favorites only and we just unfavorited an item, refresh the list
+        if (showFavoritesOnly && currentStatus) {
+          debugPrint(
+            'PromptScreen: Refreshing list after unfavoriting in favorites view',
+          );
+          _loadPrompts(refresh: true);
+        }
+      } else {
+        debugPrint('PromptScreen: Failed to toggle favorite status');
+        // If API call fails, revert the UI change
+        setState(() {
+          final promptIndex = _prompts.indexWhere((p) => p.id == promptId);
+          if (promptIndex != -1) {
+            final updatedPrompt = Prompt(
+              id: _prompts[promptIndex].id,
+              title: _prompts[promptIndex].title,
+              content: _prompts[promptIndex].content,
+              description: _prompts[promptIndex].description,
+              category: _prompts[promptIndex].category,
+              language: _prompts[promptIndex].language,
+              isPublic: _prompts[promptIndex].isPublic,
+              isFavorite: currentStatus,
+              userId: _prompts[promptIndex].userId,
+              userName: _prompts[promptIndex].userName,
+              createdAt: _prompts[promptIndex].createdAt,
+              updatedAt: _prompts[promptIndex].updatedAt,
+            );
+            _prompts[promptIndex] = updatedPrompt;
+          }
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to update favorite status')),
+          );
+        }
+      }
+    } catch (e) {
+      // If an exception occurs, revert the UI change
+      setState(() {
+        final promptIndex = _prompts.indexWhere((p) => p.id == promptId);
+        if (promptIndex != -1) {
+          final updatedPrompt = Prompt(
+            id: _prompts[promptIndex].id,
+            title: _prompts[promptIndex].title,
+            content: _prompts[promptIndex].content,
+            description: _prompts[promptIndex].description,
+            category: _prompts[promptIndex].category,
+            language: _prompts[promptIndex].language,
+            isPublic: _prompts[promptIndex].isPublic,
+            isFavorite: currentStatus,
+            userId: _prompts[promptIndex].userId,
+            userName: _prompts[promptIndex].userName,
+            createdAt: _prompts[promptIndex].createdAt,
+            updatedAt: _prompts[promptIndex].updatedAt,
+          );
+          _prompts[promptIndex] = updatedPrompt;
+        }
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error updating favorite status: $e')),
+        );
+      }
+    }
+  }
+
+  // Method to handle deleting a prompt
+  Future<void> _deletePrompt(String promptId, String promptTitle) async {
+    Navigator.of(context).pop(); // Close the confirmation dialog
+
+    try {
+      final success = await _promptService.deletePrompt(promptId);
+
+      if (success) {
+        setState(() {
+          _prompts.removeWhere((p) => p.id == promptId);
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('$promptTitle deleted')));
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to delete prompt')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error deleting prompt: $e')));
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Sample data for prompt items
-    final List<Map<String, dynamic>> prompts = [
-      {
-        'id': '1',
-        'name': 'Professional Email Writer',
-        'description': 'Generate formal business emails with proper etiquette',
-        'content': '''Create a professional email that is:
-- Clear and concise
-- Uses appropriate business language
-- Maintains professional tone
-- Includes proper greeting and signature
+    // Filter prompts based on current filters
+    final displayedPrompts = _prompts;
 
-Context: [User's specific situation]
-Key points to address: [Main message points]
-Tone: [Formal/Semi-formal]
-''',
-        'category': 'Business',
-        'language': 'English',
-        'isPublic': true,
-        'avatarColor': Colors.blue,
-      },
-      {
-        'id': '2',
-        'name': 'Creative Story Starter',
-        'description': 'Generate creative story beginnings for fiction writing',
-        'content': '''Create a story beginning with:
-- Engaging hook
-- Interesting character introduction
-- Setting description
-- Conflict hint
-
-Genre: [User's preferred genre]
-Tone: [Dark/Light/Humorous/Serious]
-Length: [Short/Medium/Long paragraph]
-''',
-        'category': 'Writing',
-        'language': 'English',
-        'isPublic': false,
-        'avatarColor': Colors.purple,
-      },
-    ];
-
-    // Filter prompts based on favorites if needed
-    final displayedPrompts =
-        showFavoritesOnly
-            ? prompts.where((p) => favoritePrompts.contains(p['id'])).toList()
-            : prompts;
-
-    return BaseScreen(
-      title: 'Prompt',
-      showBackButton: true,
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-        child: Column(
-          children: [
-            // Search bar and New button row
-            Row(
-              children: [
-                const Expanded(
-                  child: TextField(
-                    decoration: InputDecoration(
-                      hintText: 'Search Prompts',
-                      prefixIcon: Icon(Icons.search, color: Colors.grey),
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(vertical: 12),
-                      filled: true,
-                      fillColor: Color(0xFFF5F5F5),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(12)),
-                        borderSide: BorderSide.none,
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(12)),
-                        borderSide: BorderSide.none,
+    return Focus(
+      focusNode: _screenFocusNode,
+      child: BaseScreen(
+        title: 'Prompt',
+        showBackButton: true,
+        body: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Column(
+            children: [
+              // Search bar and New button row
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: _handleSearchChanged,
+                      decoration: const InputDecoration(
+                        hintText: 'Search Prompts',
+                        prefixIcon: Icon(Icons.search, color: Colors.grey),
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(vertical: 12),
+                        filled: true,
+                        fillColor: Color(0xFFF5F5F5),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(12)),
+                          borderSide: BorderSide.none,
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(12)),
+                          borderSide: BorderSide.none,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                // New button using the NewButton widget
-                NewButton(
-                  onTap: () {
-                    Navigator.pushNamed(context, '/create-prompt');
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Filter options
-            Padding(
-              padding: const EdgeInsets.only(bottom: 16.0),
-              child: Row(
-                children: [
-                  // Favorites filter
-                  GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        showFavoritesOnly = !showFavoritesOnly;
-                      });
+                  const SizedBox(width: 12),
+                  // New button using the NewButton widget
+                  NewButton(
+                    onTap: () async {
+                      final result = await Navigator.pushNamed(
+                        context,
+                        '/create-prompt',
+                      );
+                      // If prompt was created successfully, refresh the list
+                      if (result == true && mounted) {
+                        debugPrint('Prompt created, refreshing list');
+                        _loadPrompts(refresh: true);
+                      }
                     },
-                    child: Container(
-                      margin: const EdgeInsets.only(right: 8),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color:
-                            showFavoritesOnly
-                                ? const Color(0xFF415DF2)
-                                : Colors.grey[100],
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            showFavoritesOnly
-                                ? Icons.star_rounded
-                                : Icons.star_outline_rounded,
-                            size: 16,
-                            color:
-                                showFavoritesOnly
-                                    ? Colors.white
-                                    : Colors.black54,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Favorites',
-                            style: TextStyle(
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Category dropdown
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5F5F5),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    isExpanded: true,
+                    value: _selectedCategory ?? 'All',
+                    hint: const Text('Select Category'),
+                    icon: const Icon(Icons.arrow_drop_down),
+                    elevation: 16,
+                    style: const TextStyle(color: Colors.black87),
+                    onChanged: _handleCategoryChanged,
+                    items:
+                        _categories.map<DropdownMenuItem<String>>((
+                          String value,
+                        ) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(value),
+                          );
+                        }).toList(),
+                  ),
+                ),
+              ),
+
+              // Filter options
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16.0),
+                child: Row(
+                  children: [
+                    // Favorites filter
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          showFavoritesOnly = !showFavoritesOnly;
+                        });
+                        // Reload data with new filter
+                        _loadPrompts(refresh: true);
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.only(right: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color:
+                              showFavoritesOnly
+                                  ? const Color(0xFF415DF2)
+                                  : Colors.grey[100],
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              showFavoritesOnly
+                                  ? Icons.star_rounded
+                                  : Icons.star_outline_rounded,
+                              size: 16,
                               color:
                                   showFavoritesOnly
                                       ? Colors.white
                                       : Colors.black54,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 4),
+                            Text(
+                              'Favorites',
+                              style: TextStyle(
+                                color:
+                                    showFavoritesOnly
+                                        ? Colors.white
+                                        : Colors.black54,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                  const Spacer(),
-                  // Private/Public filter
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 4,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: IntrinsicHeight(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                isPrivateSelected = true;
-                              });
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color:
-                                    isPrivateSelected
-                                        ? const Color(0xFF415DF2)
-                                        : Colors.transparent,
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: Text(
-                                'Private',
-                                style: TextStyle(
+                    const Spacer(),
+                    // Private/Public filter
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: IntrinsicHeight(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  isPrivateSelected = true;
+                                });
+                                // Reload data with new filter
+                                _loadPrompts(refresh: true);
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
                                   color:
                                       isPrivateSelected
-                                          ? Colors.white
-                                          : Colors.black54,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
+                                          ? const Color(0xFF415DF2)
+                                          : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Text(
+                                  'Private',
+                                  style: TextStyle(
+                                    color:
+                                        isPrivateSelected
+                                            ? Colors.white
+                                            : Colors.black54,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                          GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                isPrivateSelected = false;
-                              });
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color:
-                                    !isPrivateSelected
-                                        ? const Color(0xFF415DF2)
-                                        : Colors.transparent,
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: Text(
-                                'Public',
-                                style: TextStyle(
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  isPrivateSelected = false;
+                                });
+                                // Reload data with new filter
+                                _loadPrompts(refresh: true);
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
                                   color:
                                       !isPrivateSelected
-                                          ? Colors.white
-                                          : Colors.black54,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
+                                          ? const Color(0xFF415DF2)
+                                          : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Text(
+                                  'Public',
+                                  style: TextStyle(
+                                    color:
+                                        !isPrivateSelected
+                                            ? Colors.white
+                                            : Colors.black54,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Prompt count
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16.0),
+                child: Row(
+                  children: [
+                    Text(
+                      '$_totalPrompts Prompts Available',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Prompt list
+              Expanded(
+                child:
+                    _hasError
+                        ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.error_outline,
+                                color: Colors.red,
+                                size: 48,
+                              ),
+                              const SizedBox(height: 16),
+                              const Text(
+                                'Failed to load prompts',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              ElevatedButton(
+                                onPressed: () => _loadPrompts(refresh: true),
+                                child: const Text('Retry'),
+                              ),
+                            ],
+                          ),
+                        )
+                        : _isLoading && _prompts.isEmpty
+                        ? const Center(child: CircularProgressIndicator())
+                        : displayedPrompts.isEmpty
+                        ? Center(
+                          child: Text(
+                            showFavoritesOnly
+                                ? 'No favorite prompts yet'
+                                : 'No prompts available',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey,
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Prompt count
-            Padding(
-              padding: const EdgeInsets.only(bottom: 16.0),
-              child: Row(
-                children: [
-                  Text(
-                    '${displayedPrompts.length} Prompts Available',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w500,
-                      color: Colors.black87,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Prompt list
-            Expanded(
-              child:
-                  displayedPrompts.isEmpty
-                      ? const Center(
-                        child: Text(
-                          'No favorite prompts yet',
-                          style: TextStyle(fontSize: 16, color: Colors.grey),
-                        ),
-                      )
-                      : ListView.builder(
-                        physics: const BouncingScrollPhysics(),
-                        itemCount: displayedPrompts.length,
-                        itemBuilder: (context, index) {
-                          final item = displayedPrompts[index];
-                          final bool isFavorite = favoritePrompts.contains(
-                            item['id'],
-                          );
-
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 16),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.05),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 8,
-                              ),
-                              title: Text(
-                                item['name'].toString(),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              subtitle: Padding(
-                                padding: const EdgeInsets.only(top: 4),
-                                child: Text(
-                                  item['description'].toString(),
-                                  style: TextStyle(
-                                    color: Colors.grey[600],
-                                    fontSize: 14,
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  // Favorite button
-                                  IconButton(
-                                    icon: Icon(
-                                      isFavorite
-                                          ? Icons.star_rounded
-                                          : Icons.star_outline_rounded,
-                                      color:
-                                          isFavorite
-                                              ? Colors.amber
-                                              : Colors.grey,
+                        )
+                        : RefreshIndicator(
+                          onRefresh: () => _loadPrompts(refresh: true),
+                          child: NotificationListener<ScrollNotification>(
+                            onNotification: (ScrollNotification scrollInfo) {
+                              if (scrollInfo.metrics.pixels ==
+                                      scrollInfo.metrics.maxScrollExtent &&
+                                  !_isLoading &&
+                                  _hasMorePrompts) {
+                                _loadPrompts();
+                                return true;
+                              }
+                              return false;
+                            },
+                            child: ListView.builder(
+                              physics: const BouncingScrollPhysics(),
+                              itemCount:
+                                  displayedPrompts.length +
+                                  (_hasMorePrompts ? 1 : 0),
+                              itemBuilder: (context, index) {
+                                // Show loading indicator at the bottom when loading more items
+                                if (index == displayedPrompts.length) {
+                                  return const Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      vertical: 16.0,
                                     ),
-                                    onPressed:
-                                        () => _toggleFavorite(item['id']),
-                                  ),
-                                  // Delete button
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.delete_outline,
-                                      color: Colors.red,
+                                    child: Center(
+                                      child: CircularProgressIndicator(),
                                     ),
-                                    onPressed:
-                                        () => _showDeleteConfirmation(
-                                          context,
-                                          item['name'].toString(),
+                                  );
+                                }
+
+                                final prompt = displayedPrompts[index];
+                                final Color avatarColor =
+                                    index % 2 == 0
+                                        ? Colors.blue
+                                        : Colors.purple;
+
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withAlpha(
+                                          13,
+                                        ), // 0.05 opacity
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: ListTile(
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 8,
+                                    ),
+                                    title: Text(
+                                      prompt.title,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    subtitle: Padding(
+                                      padding: const EdgeInsets.only(top: 4),
+                                      child: Text(
+                                        prompt.description,
+                                        style: TextStyle(
+                                          color: Colors.grey[600],
+                                          fontSize: 14,
                                         ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    leading: CircleAvatar(
+                                      backgroundColor: avatarColor,
+                                      child: Text(
+                                        prompt.title.isNotEmpty
+                                            ? prompt.title[0].toUpperCase()
+                                            : '?',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                    trailing: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        // Favorite button
+                                        IconButton(
+                                          icon: Icon(
+                                            prompt.isFavorite
+                                                ? Icons.star_rounded
+                                                : Icons.star_outline_rounded,
+                                            color:
+                                                prompt.isFavorite
+                                                    ? Colors.amber
+                                                    : Colors.grey,
+                                          ),
+                                          onPressed:
+                                              () => _toggleFavorite(
+                                                prompt.id,
+                                                prompt.isFavorite,
+                                              ),
+                                        ),
+                                        // Delete button
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.delete_outline,
+                                            color: Colors.red,
+                                          ),
+                                          onPressed:
+                                              () => _showDeleteConfirmation(
+                                                context,
+                                                prompt.title,
+                                              ),
+                                        ),
+                                      ],
+                                    ),
+                                    onTap: () async {
+                                      // Navigate to update prompt screen
+                                      final result = await Navigator.of(
+                                        context,
+                                      ).pushNamed(
+                                        '/update-prompt',
+                                        arguments: {
+                                          'id': prompt.id,
+                                          'title': prompt.title,
+                                          'content': prompt.content,
+                                          'description': prompt.description,
+                                          'category': prompt.category,
+                                          'language': prompt.language,
+                                          'isPublic': prompt.isPublic,
+                                          'userId': prompt.userId,
+                                        },
+                                      );
+
+                                      // If prompt was updated successfully, refresh the list
+                                      if (result == true && mounted) {
+                                        debugPrint(
+                                          'Prompt updated, refreshing list',
+                                        );
+                                        _loadPrompts(refresh: true);
+                                      }
+                                    },
                                   ),
-                                ],
-                              ),
-                              onTap: () {
-                                // Navigate to update prompt screen
-                                Navigator.of(
-                                  context,
-                                ).pushNamed('/update-prompt', arguments: item);
+                                );
                               },
                             ),
-                          );
-                        },
-                      ),
-            ),
-          ],
+                          ),
+                        ),
+              ),
+            ],
+          ),
         ),
       ),
     );
