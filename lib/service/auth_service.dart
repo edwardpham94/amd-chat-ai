@@ -25,7 +25,6 @@ class AuthService {
     }
   }
 
-
   Future<SignUpResponse?> login(String email, String password) async {
     try {
       final response = await DioClients.authClient.post(
@@ -53,6 +52,7 @@ class AuthService {
 
       final response = await DioClients.authClient.delete(
         '/api/v1/auth/sessions/current',
+        data: {},
         options: Options(
           headers: {
             'Authorization': 'Bearer $accessToken',
@@ -62,8 +62,9 @@ class AuthService {
       );
 
       final logoutResponse = SignUpResponse.fromJson(response.data);
-      
+  
       await UserStorage.deleteTokens();
+
       return true;
     } on DioException catch (e) {
       print('Logout error: ${e.response?.data ?? e.message}');
