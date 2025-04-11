@@ -1,6 +1,6 @@
 import 'package:amd_chat_ai/config/dio_clients.dart';
 import 'package:amd_chat_ai/config/user_storage.dart';
-import 'package:amd_chat_ai/model/SignUpResponse.dart';
+import 'package:amd_chat_ai/model/sign_up_response.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
@@ -61,10 +61,8 @@ class AuthService {
           },
         ),
       );
-      final logoutResponse = SignUpResponse.fromJson(response.data);
- 
-      await UserStorage.deleteTokens();
 
+      await UserStorage.deleteTokens();
       return true;
     } on DioException catch (e) {
       debugPrint('Logout error: ${e.response?.data ?? e.message}');

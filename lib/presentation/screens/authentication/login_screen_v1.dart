@@ -2,7 +2,7 @@ import 'package:amd_chat_ai/config/user_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:amd_chat_ai/config/dio_clients.dart';
-import 'package:amd_chat_ai/model/SignUpResponse.dart';
+import 'package:amd_chat_ai/model/sign_up_response.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});

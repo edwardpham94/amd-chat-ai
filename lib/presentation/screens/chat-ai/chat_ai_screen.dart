@@ -1,4 +1,8 @@
+import 'package:amd_chat_ai/model/conversation.dart';
+import 'package:amd_chat_ai/model/conversation_message.dart';
+import 'package:amd_chat_ai/presentation/screens/widgets/chat-ai/conversation_history_modal.dart';
 import 'package:amd_chat_ai/presentation/screens/widgets/chat-ai/prompt_template.dart';
+import 'package:amd_chat_ai/service/chat_service.dart';
 import 'package:flutter/material.dart';
 import '../widgets/chat_message.dart';
 import 'package:amd_chat_ai/presentation/screens/widgets/base_screen.dart';
@@ -14,33 +18,54 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
   final TextEditingController _messageController = TextEditingController();
   final List<Map<String, dynamic>> _messages = [];
   bool _showWelcomeMessage = true;
+
+  // Conversation history
+  final ChatAIService _chatService = ChatAIService();
+  List<Conversation> _conversations = [];
+  bool _isLoadingConversations = false; // For loading conversation history
+  bool _isWaitingForResponse = false; // For waiting for chat API response
+  String? _currentConversationId;
   final List<Map<String, dynamic>> _aiModels = [
     {
-      'name': 'GPT-3.5',
-      'selected': false,
-      'description': 'Fast & efficient for everyday tasks',
-      'tokens': '4K context',
-      'speed': 'Very Fast',
-    },
-    {
-      'name': 'GPT-4',
+      'name': 'gpt-4o',
       'selected': true,
-      'description': 'Most capable model for complex tasks',
-      'tokens': '8K context',
-      'speed': 'Standard',
-    },
-    {
-      'name': 'Claude',
-      'selected': false,
-      'description': 'Excellent at analysis & writing',
-      'tokens': '100K context',
+      'description': 'Most capable GPT model for complex tasks',
+      'tokens': '128K context',
       'speed': 'Fast',
     },
     {
-      'name': 'Gemini',
+      'name': 'gpt-4o-mini',
       'selected': false,
-      'description': 'Strong at coding & mathematics',
-      'tokens': '32K context',
+      'description': 'Efficient GPT model for everyday tasks',
+      'tokens': '128K context',
+      'speed': 'Very Fast',
+    },
+    {
+      'name': 'claude-3-haiku-20240307',
+      'selected': false,
+      'description': 'Fast Claude model for everyday tasks',
+      'tokens': '200K context',
+      'speed': 'Very Fast',
+    },
+    {
+      'name': 'claude-3-5-sonnet-20240620',
+      'selected': false,
+      'description': 'Advanced Claude model for complex tasks',
+      'tokens': '200K context',
+      'speed': 'Fast',
+    },
+    {
+      'name': 'gemini-1.5-flash-latest',
+      'selected': false,
+      'description': 'Fast Gemini model for everyday tasks',
+      'tokens': '1M context',
+      'speed': 'Very Fast',
+    },
+    {
+      'name': 'gemini-1.5-pro-latest',
+      'selected': false,
+      'description': 'Advanced Gemini model for complex tasks',
+      'tokens': '1M context',
       'speed': 'Fast',
     },
   ];
@@ -70,33 +95,284 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
     super.dispose();
   }
 
-  void _handleSendMessage() {
+  // Show conversation history modal
+  void _showConversationHistoryModal() async {
+    // Set loading state
+    setState(() {
+      _isLoadingConversations = true;
+    });
+
+    // Fetch conversations first
+    try {
+      final response = await _chatService.fetchConversations();
+
+      if (response != null && response.statusCode == 200) {
+        final conversationResponse = ConversationResponse.fromJson(
+          response.data,
+        );
+        setState(() {
+          _conversations = conversationResponse.items;
+          _isLoadingConversations = false;
+        });
+
+        // Now show the modal with the loaded conversations
+        if (mounted) {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+            ),
+            builder: (context) {
+              return ConversationHistoryModal(
+                conversations: _conversations,
+                isLoading: false, // We've already loaded the conversations
+                onConversationSelected: (conversationId) {
+                  _loadConversation(conversationId);
+                },
+              );
+            },
+          );
+        }
+      } else {
+        setState(() {
+          _conversations = [];
+          _isLoadingConversations = false;
+        });
+
+        // Show modal with empty conversations
+        if (mounted) {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+            ),
+            builder: (context) {
+              return ConversationHistoryModal(
+                conversations: [],
+                isLoading: false,
+                onConversationSelected: (_) {}, // Empty callback
+              );
+            },
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching conversation history: $e');
+      setState(() {
+        _conversations = [];
+        _isLoadingConversations = false;
+      });
+
+      // Show error in modal
+      if (mounted) {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+          ),
+          builder: (context) {
+            return ConversationHistoryModal(
+              conversations: [],
+              isLoading: false,
+              onConversationSelected: (_) {}, // Empty callback
+            );
+          },
+        );
+      }
+    }
+  }
+
+  // Load a specific conversation
+  Future<void> _loadConversation(String conversationId) async {
+    debugPrint('Loading conversation: $conversationId');
+    setState(() {
+      _currentConversationId = conversationId;
+      _messages.clear();
+      _showWelcomeMessage = false;
+      _isLoadingConversations = true;
+    });
+
+    // Add a timeout to prevent loading forever
+    bool timeoutOccurred = false;
+    Future.delayed(const Duration(seconds: 10), () {
+      if (_isLoadingConversations &&
+          mounted &&
+          _currentConversationId == conversationId) {
+        debugPrint(
+          'Timeout occurred while loading conversation: $conversationId',
+        );
+        setState(() {
+          _isLoadingConversations = false;
+          timeoutOccurred = true;
+          _messages.add({
+            'message': 'Loading conversation timed out. Please try again.',
+            'type': MessageType.assistant,
+            'timestamp': DateTime.now(),
+          });
+        });
+      }
+    });
+
+    try {
+      final response = await _chatService.fetchConversationHistory(
+        conversationId: conversationId,
+      );
+
+      // If timeout already occurred, don't update state
+      if (timeoutOccurred) return;
+
+      if (response != null && response.statusCode == 200) {
+        final messagesResponse = ConversationMessagesResponse.fromJson(
+          response.data,
+        );
+        if (mounted) {
+          setState(() {
+            _isLoadingConversations = false;
+
+            // Add messages to the chat
+            for (final message in messagesResponse.items) {
+              // Add user message first
+              _messages.add({
+                'message': message.query,
+                'type': MessageType.user,
+                'timestamp': message.createdAt,
+              });
+
+              // Then add assistant response
+              _messages.add({
+                'message': message.answer,
+                'type': MessageType.assistant,
+                'timestamp': message.createdAt,
+              });
+            }
+
+            // If no messages were loaded, show a message
+            if (messagesResponse.items.isEmpty) {
+              _messages.add({
+                'message': 'No messages found in this conversation.',
+                'type': MessageType.assistant,
+                'timestamp': DateTime.now(),
+              });
+            }
+          });
+        }
+      } else {
+        if (mounted && !timeoutOccurred) {
+          setState(() {
+            _isLoadingConversations = false;
+            _messages.add({
+              'message': 'Failed to load conversation messages',
+              'type': MessageType.assistant,
+              'timestamp': DateTime.now(),
+            });
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading conversation messages: $e');
+      if (mounted && !timeoutOccurred) {
+        setState(() {
+          _isLoadingConversations = false;
+          _messages.add({
+            'message': 'Error loading conversation: $e',
+            'type': MessageType.assistant,
+            'timestamp': DateTime.now(),
+          });
+        });
+      }
+    }
+  }
+
+  // Create a new conversation
+  void _createNewConversation() {
+    setState(() {
+      _currentConversationId = null;
+      _messages.clear();
+      _showWelcomeMessage = true;
+      _isLoadingConversations = false; // Reset loading state
+    });
+  }
+
+  Future<void> _handleSendMessage() async {
     if (_messageController.text.trim().isNotEmpty) {
       final message = _messageController.text;
+      final timestamp = DateTime.now();
+
+      // Add user message to UI immediately
       setState(() {
         _showWelcomeMessage = false;
         _messages.add({
           'message': message,
           'type': MessageType.user,
-          'timestamp': DateTime.now(),
+          'timestamp': timestamp,
         });
+        // Show loading indicator for chat response
+        _isWaitingForResponse = true;
       });
 
-      // Simulate AI response after a short delay
-      Future.delayed(const Duration(seconds: 1), () {
-        if (!mounted) return;
-
-        setState(() {
-          _messages.add({
-            'message':
-                'I understand you want help with that. Let me assist you.',
-            'type': MessageType.assistant,
-            'timestamp': DateTime.now(),
-          });
-        });
-      });
-
+      // Clear input field immediately for better UX
       _messageController.clear();
+
+      try {
+        // Send message to API
+        final response = await _chatService.sendMessage(
+          content: message,
+          assistantId: _selectedModel,
+          conversationId: _currentConversationId,
+        );
+
+        if (response != null &&
+            (response.statusCode == 200 || response.statusCode == 201)) {
+          // If this was a new conversation, save the conversation ID
+          if (_currentConversationId == null &&
+              response.data['conversationId'] != null) {
+            _currentConversationId = response.data['conversationId'];
+            debugPrint(
+              'New conversation created with ID: $_currentConversationId',
+            );
+          }
+
+          // Add AI response to UI
+          if (mounted) {
+            setState(() {
+              _isWaitingForResponse = false;
+              _messages.add({
+                'message':
+                    response.data['message'] ?? 'No response from assistant',
+                'type': MessageType.assistant,
+                'timestamp': DateTime.now(),
+              });
+            });
+          }
+        } else {
+          // Handle error
+          if (mounted) {
+            setState(() {
+              _isWaitingForResponse = false;
+              _messages.add({
+                'message': 'Failed to send message. Please try again.',
+                'type': MessageType.assistant,
+                'timestamp': DateTime.now(),
+              });
+            });
+          }
+        }
+      } catch (e) {
+        debugPrint('Error sending message: $e');
+        if (mounted) {
+          setState(() {
+            _isWaitingForResponse = false;
+            _messages.add({
+              'message': 'Error: $e',
+              'type': MessageType.assistant,
+              'timestamp': DateTime.now(),
+            });
+          });
+        }
+      }
     }
   }
 
@@ -133,11 +409,14 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
                     ),
                     title: Row(
                       children: [
-                        Text(
-                          model['name'],
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
+                        Flexible(
+                          child: Text(
+                            model['name'],
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -149,8 +428,8 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
                           decoration: BoxDecoration(
                             color:
                                 model['selected']
-                                    ? Colors.blue.withOpacity(0.1)
-                                    : Colors.grey.withOpacity(0.1),
+                                    ? Colors.blue.withAlpha(25)
+                                    : Colors.grey.withAlpha(25),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
@@ -194,7 +473,7 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
                     ),
                     onTap: () => _changeAIModel(model['name']),
                     selected: model['selected'],
-                    selectedTileColor: Colors.blue.withOpacity(0.05),
+                    selectedTileColor: Colors.blue.withAlpha(13),
                   );
                 },
               ),
@@ -215,24 +494,67 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
       title: 'Chat AI',
       body: Column(
         children: [
-          // Model selector centered below title
-          Center(
-            child: TextButton(
-              onPressed: _showModelSelectionDialog,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    _selectedModel,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.black,
+          // Model selector and conversation indicator
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                // Current conversation indicator
+                if (_currentConversationId != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.blue.shade200),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.chat, size: 16, color: Colors.blue.shade700),
+                        const SizedBox(width: 4),
+                        Text(
+                          'In conversation',
+                          style: TextStyle(
+                            color: Colors.blue.shade700,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const Icon(Icons.arrow_drop_down, color: Colors.black),
-                ],
-              ),
+                const Spacer(),
+                // Model selector
+                Center(
+                  child: TextButton(
+                    onPressed: _showModelSelectionDialog,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxWidth: MediaQuery.of(context).size.width * 0.4,
+                          ),
+                          child: Text(
+                            _selectedModel,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const Icon(Icons.arrow_drop_down, color: Colors.black),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           // Existing chat content
@@ -253,15 +575,19 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
       padding: const EdgeInsets.all(24),
       children: [
         const Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Text('👋', style: TextStyle(fontSize: 24)),
             SizedBox(width: 8),
-            Text(
-              'Hi, good evening!',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1A1A2E),
+            Flexible(
+              child: Text(
+                'Hi, good evening!',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A1A2E),
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -289,10 +615,49 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
   }
 
   Widget _buildChatMessages() {
+    // Only show loading indicator if we're loading a conversation history and not showing the welcome screen
+    if (_isLoadingConversations &&
+        !_showWelcomeMessage &&
+        _currentConversationId != null) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Loading conversation history...'),
+          ],
+        ),
+      );
+    }
+
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: _messages.length,
+      // Add +1 to itemCount if we're waiting for a response to show the loading indicator
+      itemCount: _messages.length + (_isWaitingForResponse ? 1 : 0),
       itemBuilder: (context, index) {
+        // If we're at the last item and waiting for a response, show a loading indicator
+        if (index == _messages.length && _isWaitingForResponse) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16.0),
+            child: Center(
+              child: const Column(
+                children: [
+                  SizedBox(height: 8),
+                  SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  SizedBox(height: 8),
+                  Text('Thinking...', style: TextStyle(color: Colors.grey)),
+                ],
+              ),
+            ),
+          );
+        }
+
+        // Otherwise show the message
         final message = _messages[index];
         return ChatMessage(
           message: message['message'],
@@ -336,18 +701,20 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
                           vertical: 12,
                         ),
                       ),
-                      onSubmitted: (_) => _handleSendMessage(),
+                      onSubmitted: (_) async => await _handleSendMessage(),
                     ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.schedule),
                     color: Colors.grey,
-                    onPressed: () {},
+                    onPressed: _showConversationHistoryModal,
+                    tooltip: 'View conversation history',
                   ),
                   IconButton(
                     icon: const Icon(Icons.add_circle_outline),
                     color: Colors.grey,
-                    onPressed: () {},
+                    onPressed: _createNewConversation,
+                    tooltip: 'Start a new conversation',
                   ),
                 ],
               ),
@@ -361,7 +728,7 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
                 ),
                 const Spacer(),
                 TextButton(
-                  onPressed: _handleSendMessage,
+                  onPressed: () async => await _handleSendMessage(),
                   style: TextButton.styleFrom(
                     backgroundColor: const Color(0xFF007AFF),
                     foregroundColor: Colors.white,
