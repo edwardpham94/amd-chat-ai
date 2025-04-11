@@ -1,4 +1,4 @@
-import 'package:amd_chat_ai/presentation/screens/SplashScreen.dart';
+import 'package:amd_chat_ai/presentation/screens/splash_screen.dart';
 import 'package:amd_chat_ai/presentation/screens/authentication/enter_otp_screen.dart';
 import 'package:amd_chat_ai/presentation/screens/authentication/forget_password_screen.dart';
 import 'package:amd_chat_ai/presentation/screens/authentication/login_screen_v1.dart';
@@ -47,8 +47,7 @@ class MyApp extends StatelessWidget {
         '/update-assistant': (context) => const UpdateAssistantScreen(),
         '/chat-ai': (context) => const ChatAIScreen(),
         '/profile': (context) => const ProfileScreen(),
-        '/account-settings':
-            (context) => const AccountSettingsScreen(),
+        '/account-settings': (context) => const AccountSettingsScreen(),
         '/forget-password': (context) => const ForgetPasswordScreen(),
         '/enter-otp': (context) => const EnterOTPScreen(),
         '/reset-password': (context) => const ResetPasswordScreen(),

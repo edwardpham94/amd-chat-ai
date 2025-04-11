@@ -1,5 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:amd_chat_ai/model/SignUpResponse.dart';
+import 'package:amd_chat_ai/model/sign_up_response.dart';
 
 class UserStorage {
   static Future<void> saveUserInfo(SignUpResponse response) async {
