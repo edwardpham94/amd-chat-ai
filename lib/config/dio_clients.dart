@@ -27,6 +27,7 @@ class DioClients {
 
       final response = await authClient.post(
         '/api/v1/auth/sessions/current/refresh',
+        data: {},
         options: Options(headers: {'X-Stack-Refresh-Token': refreshToken}),
       );
 
@@ -54,7 +55,7 @@ class DioClients {
       BaseOptions(
         baseUrl: ApiConfig.authBaseUrl,
         headers: {
-          // 'Content-Type': 'application/json',
+          'Content-Type': 'application/json',
           'X-Stack-Access-Type': 'client',
           'X-Stack-Project-Id': 'a914f06b-5e46-4966-8693-80e4b9f4f409',
           'X-Stack-Publishable-Client-Key':

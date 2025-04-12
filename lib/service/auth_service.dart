@@ -15,7 +15,7 @@ class AuthService {
           'verification_callback_url':
               'https://auth.dev.jarvis.cx/handler/email-verification?after_auth_return_to=%2Fauth%2Fsignin%3Fclient_id%3Djarvis_chat%26redirect%3Dhttps%253A%252F%252Fchat.dev.jarvis.cx%252Fauth%252Foauth%252Fsuccess',
         },
-        options: Options(headers: {'Content-Type': 'application/json'}),
+        // options: Options(headers: {'Content-Type': 'application/json'}),
       );
       final signUpResponse = SignUpResponse.fromJson(response.data);
       // Save the tokens and user ID to local storage
@@ -32,7 +32,7 @@ class AuthService {
       final response = await DioClients.authClient.post(
         '/api/v1/auth/password/sign-in',
         data: {'email': email, 'password': password},
-        options: Options(headers: {'Content-Type': 'application/json'}),
+        // options: Options(headers: {'Content-Type': 'application/json'}),
       );
       final signInResponse = SignUpResponse.fromJson(response.data);
       await UserStorage.saveUserInfo(signInResponse);
