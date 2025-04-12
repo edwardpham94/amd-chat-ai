@@ -27,6 +27,7 @@ class DioClients {
 
       final response = await authClient.post(
         '/api/v1/auth/sessions/current/refresh',
+        data: {},
         options: Options(headers: {'X-Stack-Refresh-Token': refreshToken}),
       );
 
