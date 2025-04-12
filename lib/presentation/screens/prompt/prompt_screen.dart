@@ -907,6 +907,22 @@ class _PromptScreenState extends State<PromptScreen> {
                                                 prompt.title,
                                               ),
                                         ),
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.arrow_forward_rounded,
+                                            color: Colors.blue,
+                                          ),
+                                          onPressed: () {
+                                            Navigator.pushNamed(
+                                              context,
+                                              '/chat-ai',
+                                              arguments: {
+                                                'prompt': prompt.content,
+                                              },
+                                            );
+                                          },
+                                          tooltip: 'Apply this prompt',
+                                        ),
                                       ],
                                     ),
                                     onTap: () async {

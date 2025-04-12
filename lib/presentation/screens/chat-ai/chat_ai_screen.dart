@@ -100,6 +100,28 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
     },
   ];
 
+  // @override
+  // void initState() {
+  //   super.initState();
+  //   final args =
+  //       ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+  //   if (args != null && args['prompt'] != null) {
+  //     _messageController.text =
+  //         args['prompt']; // Pre-fill the input field with the prompt
+  //   }
+  // }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    if (args != null && args['prompt'] != null) {
+      _messageController.text =
+          args['prompt']; // Pre-fill the input field with the prompt
+    }
+  }
+
   @override
   void dispose() {
     _messageController.dispose();
