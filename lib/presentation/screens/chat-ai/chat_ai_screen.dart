@@ -3,6 +3,7 @@ import 'package:amd_chat_ai/model/conversation_message.dart';
 import 'package:amd_chat_ai/presentation/screens/widgets/chat-ai/conversation_history_modal.dart';
 import 'package:amd_chat_ai/presentation/screens/widgets/chat-ai/prompt_template.dart';
 import 'package:amd_chat_ai/service/chat_service.dart';
+import 'package:amd_chat_ai/service/prompt_service.dart';
 import 'package:flutter/material.dart';
 import '../widgets/chat_message.dart';
 import 'package:amd_chat_ai/presentation/screens/widgets/base_screen.dart';
@@ -15,6 +16,7 @@ class ChatAIScreen extends StatefulWidget {
 }
 
 class _ChatAIScreenState extends State<ChatAIScreen> {
+  final PromptService _promptService = PromptService();
   final TextEditingController _messageController = TextEditingController();
   final List<Map<String, dynamic>> _messages = [];
   bool _showWelcomeMessage = true;
@@ -25,6 +27,15 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
   bool _isLoadingConversations = false; // For loading conversation history
   bool _isWaitingForResponse = false; // For waiting for chat API response
   String? _currentConversationId;
+
+  List<String> _prompts = []; // List to store fetched prompts
+  bool _showPromptList = false; // Flag to show/hide the prompt list
+  bool _isFetchingPrompts =
+      false; // Flag to indicate if prompts are being fetched
+  String _searchQuery = ''; // Current search query
+
+
+  
   final List<Map<String, dynamic>> _aiModels = [
     {
       'name': 'gpt-4o',
@@ -94,6 +105,36 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
     _messageController.dispose();
     super.dispose();
   }
+
+  Future<void> _fetchPrompts(String query) async {
+    if (query.isEmpty) {
+      setState(() {
+        _prompts = [];
+        _showPromptList = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _isFetchingPrompts = true;
+    });
+
+    final response = await _promptService.getPrompts(searchQuery: query);
+    if (response != null) {
+      setState(() {
+        _prompts = response.items.map((prompt) => prompt.title).toList();
+        _showPromptList = _prompts.isNotEmpty;
+        _isFetchingPrompts = false;
+      });
+    } else {
+      setState(() {
+        _prompts = [];
+        _showPromptList = false;
+        _isFetchingPrompts = false;
+      });
+    }
+  }
+
 
   // Show conversation history modal
   void _showConversationHistoryModal() async {
@@ -569,7 +610,7 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
       ),
     );
   }
-
+  
   Widget _buildWelcomeMessage() {
     return ListView(
       padding: const EdgeInsets.all(24),
@@ -687,35 +728,84 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.grey.shade200),
               ),
-              child: Row(
+              child: Column(
                 children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _messageController,
-                      decoration: const InputDecoration(
-                        hintText: 'Ask me anything, press \'/\' for prompts...',
-                        hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _messageController,
+                          decoration: const InputDecoration(
+                            hintText:
+                                'Ask me anything, press \'/\' for prompts...',
+                            hintStyle: TextStyle(
+                              color: Colors.grey,
+                              fontSize: 14,
+                            ),
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                          ),
+                          onChanged: (value) {
+                            _searchQuery = value;
+                            _fetchPrompts(
+                              value,
+                            ); // Fetch prompts as the user types
+                          },
+                          onSubmitted: (_) async => await _handleSendMessage(),
                         ),
                       ),
-                      onSubmitted: (_) async => await _handleSendMessage(),
+                      IconButton(
+                        icon: const Icon(Icons.schedule),
+                        color: Colors.grey,
+                        onPressed: _showConversationHistoryModal,
+                        tooltip: 'View conversation history',
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.add_circle_outline),
+                        color: Colors.grey,
+                        onPressed: _createNewConversation,
+                        tooltip: 'Start a new conversation',
+                      ),
+                    ],
+                  ),
+                  if (_showPromptList)
+                    Container(
+                      constraints: const BoxConstraints(maxHeight: 200),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade200),
+                      ),
+                      child:
+                          _isFetchingPrompts
+                              ? const Center(
+                                child: Padding(
+                                  padding: EdgeInsets.all(16.0),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              )
+                              : ListView.builder(
+                                shrinkWrap: true,
+                                itemCount: _prompts.length,
+                                itemBuilder: (context, index) {
+                                  return ListTile(
+                                    title: Text(_prompts[index]),
+                                    onTap: () {
+                                      setState(() {
+                                        _messageController.text =
+                                            _prompts[index];
+                                        _showPromptList = false;
+                                      });
+                                    },
+                                  );
+                                },
+                              ),
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.schedule),
-                    color: Colors.grey,
-                    onPressed: _showConversationHistoryModal,
-                    tooltip: 'View conversation history',
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.add_circle_outline),
-                    color: Colors.grey,
-                    onPressed: _createNewConversation,
-                    tooltip: 'Start a new conversation',
-                  ),
                 ],
               ),
             ),
@@ -756,6 +846,8 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
       ),
     );
   }
+
+
 
   void _handlePromptSelect(String prompt) {
     setState(() {
