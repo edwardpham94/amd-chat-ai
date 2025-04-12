@@ -101,6 +101,17 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
   ];
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final args =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    if (args != null && args['prompt'] != null) {
+      _messageController.text =
+          args['prompt'];
+    }
+  }
+
+  @override
   void dispose() {
     _messageController.dispose();
     super.dispose();
