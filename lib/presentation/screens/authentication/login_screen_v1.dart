@@ -1,4 +1,8 @@
+import 'package:amd_chat_ai/config/user_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
+import 'package:amd_chat_ai/config/dio_clients.dart';
+import 'package:amd_chat_ai/model/sign_up_response.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -13,6 +17,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _rememberLogin = false;
   bool _isPasswordStrong = false;
   bool _obscurePassword = true;
+  bool _isSubmitting = false;
 
   @override
   void dispose() {
@@ -31,12 +36,57 @@ class _LoginScreenState extends State<LoginScreen> {
     });
   }
 
-  void _handleLogin() {
-    Navigator.pushReplacementNamed(context, '/chat-ai');
-    // Validate inputs
-    if (_emailController.text.isNotEmpty &&
-        _passwordController.text.isNotEmpty) {
-      Navigator.pushReplacementNamed(context, '/');
+  Future<SignUpResponse?> login(String email, String password) async {
+    try {
+      final response = await DioClients.authClient.post(
+        '/api/v1/auth/password/sign-in',
+        data: {'email': email, 'password': password},
+      );
+      final signInResponse = SignUpResponse.fromJson(response.data);
+      await UserStorage.saveUserInfo(signInResponse);
+      return signInResponse;
+    } on DioException catch (e) {
+      print('Signin error: ${e.response?.data ?? e.message}');
+      return null;
+    }
+  }
+
+  Future<void> _handleLogin() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill in all fields')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    try {
+      final response = await login(email, password);
+
+      if (response != null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Login successful!')));
+        Navigator.pushReplacementNamed(context, '/chat-ai');
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Invalid email or password')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('An error occurred: $e')));
+    } finally {
+      setState(() {
+        _isSubmitting = false;
+      });
     }
   }
 
@@ -225,7 +275,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 24),
               ElevatedButton(
-                onPressed: _handleLogin,
+                onPressed: _isSubmitting ? null : _handleLogin,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF6C63FF),
                   minimumSize: const Size(double.infinity, 52),
@@ -233,10 +283,21 @@ class _LoginScreenState extends State<LoginScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text(
-                  'Login',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                ),
+                child:
+                    _isSubmitting
+                        ? const CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
+                        )
+                        : const Text(
+                          'Login',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
               ),
               const SizedBox(height: 16),
               Center(
