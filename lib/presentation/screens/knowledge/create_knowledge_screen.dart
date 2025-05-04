@@ -1,5 +1,6 @@
 import 'package:amd_chat_ai/service/knowledge_service.dart';
 import 'package:dio/dio.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:amd_chat_ai/presentation/screens/widgets/base_screen.dart';
@@ -22,12 +23,10 @@ class _CreateKnowledgeScreenState extends State<CreateKnowledgeScreen>
   final KnowledgeService _knowledgeService = KnowledgeService();
   bool _isLoading = false;
 
-  
-
-
   Map<String, dynamic>? _selectedFile;
   String? _selectedWebsiteUrl;
-  String? _knowledgeId; 
+  String? _selectedWebsiteName;
+  String? _knowledgeId;
 
   @override
   void initState() {
@@ -43,44 +42,9 @@ class _CreateKnowledgeScreenState extends State<CreateKnowledgeScreen>
       final args = ModalRoute.of(context)?.settings.arguments as String?;
       if (args != null) {
         _knowledgeId = args;
-
-        // print('>>>>>>>>>>>>>>>>>>>>>>>>> create/update: ID: $_knowledgeId');
-        // _fetchKnowledgeDetails();
       }
     });
   }
-
-  // Future<void> _fetchKnowledgeDetails() async {
-  //   setState(() {
-  //     _isLoading = true;
-  //   });
-
-  //   try {
-  //     final knowledge = await _knowledgeService.getKnowledges(
-  //       offset: 0,
-  //       limit: 1,
-  //       q: _knowledgeId,
-  //     );
-  //     print(
-  //       '>>>>>>>>>>>>>>>>>>>>>>>>> KnowledgeService: detail knowledge by ID data: ${knowledge}',
-  //     );
-  //     // if (knowledge != null) {
-  //     //   setState(() {
-  //     //     _nameController.text = knowledge.knowledgeName;
-  //     //     _descriptionController.text = knowledge.description;
-  //     //   });
-  //     // }
-  //   } catch (e) {
-  //     debugPrint('Error fetching knowledge details: $e');
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       const SnackBar(content: Text('Failed to load knowledge details.')),
-  //     );
-  //   } finally {
-  //     setState(() {
-  //       _isLoading = false;
-  //     });
-  //   }
-  // }
 
   @override
   void dispose() {
@@ -90,7 +54,7 @@ class _CreateKnowledgeScreenState extends State<CreateKnowledgeScreen>
     super.dispose();
   }
 
-Future<void> _handleCreateKnowledge() async {
+  Future<void> _handleCreateKnowledge() async {
     if (_nameController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a knowledge name')),
@@ -124,6 +88,60 @@ Future<void> _handleCreateKnowledge() async {
             ),
           ),
         );
+
+        // Get the ID of the created knowledge
+        final String knowledgeId = knowledge.id ?? '';
+
+        print(
+          'Knowledge ID: $knowledgeId'
+          'file: ${_selectedFile}',
+        );
+
+        if (_selectedFile != null && _selectedFile!['path'] != null) {
+          // Upload the local file
+          print('>>>>>>>>>>>>>>>>>> Uploading file: ${_selectedFile!['path']}');
+          final String filePath = _selectedFile!['path'];
+          final success = await _knowledgeService.uploadLocalFile(
+            id: knowledgeId,
+            filePath: filePath,
+          );
+
+          if (success) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('File uploaded successfully!')),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Failed to upload file. Please try again.'),
+              ),
+            );
+          }
+        }
+
+        if (_selectedWebsiteUrl != null) {
+          print(
+            'Selected website URL: $_selectedWebsiteName $_selectedWebsiteUrl ',
+          );
+          final success = await _knowledgeService.uploadFromWebsite(
+            id: knowledgeId,
+            webUrl: _selectedWebsiteUrl!,
+            unitName: _selectedWebsiteName!,
+          );
+
+          if (success) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Attached website successfully!')),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Failed to upload website. Please try again.'),
+              ),
+            );
+          }
+        }
+
         Navigator.pop(context);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -272,7 +290,6 @@ Future<void> _handleCreateKnowledge() async {
               const SizedBox(height: 48),
 
               // Create Button
-
               _isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : PrimaryButton(
@@ -283,7 +300,6 @@ Future<void> _handleCreateKnowledge() async {
                     onPressed: _handleCreateKnowledge,
                   ),
 
-      
               const SizedBox(height: 24),
             ],
           ),
@@ -293,20 +309,26 @@ Future<void> _handleCreateKnowledge() async {
   }
 
   // Update the file upload dialog
-  void _showFileUploadDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return FilePickerDialog(
-          onFileSelected: (fileData) {
-            setState(() {
-              _selectedFile = fileData;
-              _selectedSource = 'Local files';
-            });
-          },
-        );
-      },
-    );
+void _showFileUploadDialog(BuildContext context) async {
+    final result = await FilePicker.platform.pickFiles();
+
+    if (result != null && result.files.single.path != null) {
+      setState(() {
+        _selectedFile = {
+          'name': result.files.single.name,
+          'size': '${(result.files.single.size / 1024).toStringAsFixed(2)} KB',
+          'progress': 100,
+          'icon': Icons.insert_drive_file,
+          'path': result.files.single.path, // Add the file path here
+        };
+        _selectedSource = 'Local files';
+      });
+    } else {
+      // User canceled the picker
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('No file selected')));
+    }
   }
 
   // Add this widget to display selected file
@@ -596,6 +618,8 @@ Future<void> _handleCreateKnowledge() async {
   // Also update the website dialog to fix potential overflow
   void _showWebsiteDialog(BuildContext context) {
     final linkController = TextEditingController();
+    final nameController =
+        TextEditingController(); // Controller for website name
 
     bool isValidUrl(String url) {
       try {
@@ -656,6 +680,19 @@ Future<void> _handleCreateKnowledge() async {
                     ),
                     const SizedBox(height: 24),
 
+                    // Website name input field
+                    TextField(
+                      controller: nameController,
+                      decoration: InputDecoration(
+                        labelText: 'Website Name',
+                        hintText: 'Enter website name',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
                     // Link input field
                     TextField(
                       controller: linkController,
@@ -688,6 +725,7 @@ Future<void> _handleCreateKnowledge() async {
                                   setState(() {
                                     _selectedSource = 'Website';
                                     _selectedWebsiteUrl = linkController.text;
+                                    _selectedWebsiteName = nameController.text; 
                                   });
                                   Navigator.pop(context);
                                 }

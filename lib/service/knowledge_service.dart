@@ -68,19 +68,19 @@ class KnowledgeService {
         'description': description,
       };
 
-      debugPrint('KnowledgeService: Create request data: $data');
+      // debugPrint('KnowledgeService: Create request data: $data');
 
       final response = await DioClients.kbClient.post(
         '/kb-core/v1/knowledge',
         data: data,
       );
 
-      debugPrint(
-        'KnowledgeService: Create knowledge response status: ${response.statusCode}',
-      );
-      debugPrint(
-        'KnowledgeService: Create knowledge response: ${response.data}',
-      );
+      // debugPrint(
+      //   'KnowledgeService: Create knowledge response status: ${response.statusCode}',
+      // );
+      // debugPrint(
+      //   'KnowledgeService: Create knowledge response: ${response.data}',
+      // );
 
       // Parse the response into a Knowledge object
       return Knowledge.fromJson(response.data);
@@ -121,6 +121,62 @@ class KnowledgeService {
         'KnowledgeService: Error fetching knowledge by ID: ${e.response?.data ?? e.message}',
       );
       rethrow;
+    }
+  }
+
+  Future<bool> uploadLocalFile({
+    required String id,
+    required String filePath,
+  }) async {
+    try {
+      final formData = FormData.fromMap({
+        'file': await MultipartFile.fromFile(filePath),
+      });
+
+      final response = await DioClients.kbClient.post(
+        '/kb-core/v1/knowledge/$id/local-file',
+        data: formData,
+        options: Options(headers: {'Content-Type': 'multipart/form-data'}),
+      );
+
+      debugPrint(
+        'KnowledgeService: Upload file response status: ${response.statusCode}',
+      );
+      debugPrint('KnowledgeService: Upload file response: ${response.data}');
+
+      return true;
+    } on DioException catch (e) {
+      debugPrint('KnowledgeService: Error uploading file: ${e}');
+      debugPrint(
+        'KnowledgeService: Error uploading file: ${e.response?.data ?? e.message}',
+      );
+      return false;
+    }
+  }
+
+  Future<bool> uploadFromWebsite({
+    required String id,
+    required String unitName,
+    required String webUrl,
+  }) async {
+    try {
+      final response = await DioClients.kbClient.post(
+        '/kb-core/v1/knowledge/$id/web',
+        data: {'unitName': unitName, 'webUrl': webUrl},
+        options: Options(headers: {'Content-Type': 'application/json'}),
+      );
+
+      debugPrint(
+        'KnowledgeService: Upload website response status: ${response.statusCode}',
+      );
+      debugPrint('KnowledgeService: Upload website response: ${response.data}');
+
+      return true;
+    } on DioException catch (e) {
+      debugPrint(
+        'KnowledgeService: Error uploading website: ${e.response?.data ?? e.message}',
+      );
+      return false;
     }
   }
 }

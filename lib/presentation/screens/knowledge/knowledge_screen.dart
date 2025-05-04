@@ -66,7 +66,7 @@ class _KnowledgeScreenState extends State<KnowledgeScreen> {
       _hasNext = true; // Reset pagination flag
     });
 
-    await _fetchKnowledgeList(); // Fetch the search results
+    await _fetchKnowledgeList();
   }
 
   @override
