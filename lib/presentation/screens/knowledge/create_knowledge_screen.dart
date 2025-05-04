@@ -1,3 +1,5 @@
+import 'package:amd_chat_ai/service/knowledge_service.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:amd_chat_ai/presentation/screens/widgets/base_screen.dart';
@@ -17,9 +19,15 @@ class _CreateKnowledgeScreenState extends State<CreateKnowledgeScreen>
   final _descriptionController = TextEditingController();
   String? _selectedSource;
   late AnimationController _animationController;
+  final KnowledgeService _knowledgeService = KnowledgeService();
+  bool _isLoading = false;
+
+  
+
 
   Map<String, dynamic>? _selectedFile;
   String? _selectedWebsiteUrl;
+  String? _knowledgeId; 
 
   @override
   void initState() {
@@ -29,7 +37,50 @@ class _CreateKnowledgeScreenState extends State<CreateKnowledgeScreen>
       vsync: this,
     );
     _animationController.forward();
+
+    // Retrieve the ID from the arguments and fetch knowledge details if editing
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final args = ModalRoute.of(context)?.settings.arguments as String?;
+      if (args != null) {
+        _knowledgeId = args;
+
+        // print('>>>>>>>>>>>>>>>>>>>>>>>>> create/update: ID: $_knowledgeId');
+        // _fetchKnowledgeDetails();
+      }
+    });
   }
+
+  // Future<void> _fetchKnowledgeDetails() async {
+  //   setState(() {
+  //     _isLoading = true;
+  //   });
+
+  //   try {
+  //     final knowledge = await _knowledgeService.getKnowledges(
+  //       offset: 0,
+  //       limit: 1,
+  //       q: _knowledgeId,
+  //     );
+  //     print(
+  //       '>>>>>>>>>>>>>>>>>>>>>>>>> KnowledgeService: detail knowledge by ID data: ${knowledge}',
+  //     );
+  //     // if (knowledge != null) {
+  //     //   setState(() {
+  //     //     _nameController.text = knowledge.knowledgeName;
+  //     //     _descriptionController.text = knowledge.description;
+  //     //   });
+  //     // }
+  //   } catch (e) {
+  //     debugPrint('Error fetching knowledge details: $e');
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       const SnackBar(content: Text('Failed to load knowledge details.')),
+  //     );
+  //   } finally {
+  //     setState(() {
+  //       _isLoading = false;
+  //     });
+  //   }
+  // }
 
   @override
   void dispose() {
@@ -37,6 +88,71 @@ class _CreateKnowledgeScreenState extends State<CreateKnowledgeScreen>
     _descriptionController.dispose();
     _animationController.dispose();
     super.dispose();
+  }
+
+Future<void> _handleCreateKnowledge() async {
+    if (_nameController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a knowledge name')),
+      );
+      return;
+    }
+
+    if (_descriptionController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a description')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Call the createKnowledge function
+      final knowledge = await _knowledgeService.createKnowledge(
+        knowledgeName: _nameController.text.trim(),
+        description: _descriptionController.text.trim(),
+      );
+
+      if (knowledge != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Knowledge "${knowledge.knowledgeName}" created successfully!',
+            ),
+          ),
+        );
+        Navigator.pop(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to create knowledge. Please try again.'),
+          ),
+        );
+      }
+    } on DioException catch (e) {
+      debugPrint('Error creating knowledge: ${e.response?.data ?? e.message}');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Error: ${e.response?.data['message'] ?? 'An unexpected error occurred.'}',
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Unexpected error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('An unexpected error occurred. Please try again.'),
+        ),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -70,7 +186,7 @@ class _CreateKnowledgeScreenState extends State<CreateKnowledgeScreen>
     ];
 
     return BaseScreen(
-      title: 'Create Knowledge',
+      title: _knowledgeId == null ? 'Create Knowledge' : 'Edit Knowledge',
       showBackButton: true,
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
@@ -156,21 +272,18 @@ class _CreateKnowledgeScreenState extends State<CreateKnowledgeScreen>
               const SizedBox(height: 48),
 
               // Create Button
-              PrimaryButton(
-                label: 'Create Knowledge',
-                onPressed: () {
-                  // Handle create knowledge logic
-                  final knowledge = {
-                    'name': _nameController.text,
-                    'description': _descriptionController.text,
-                    'source': _selectedSource,
-                  };
 
-                  debugPrint('Created knowledge: $knowledge');
-                  Navigator.pop(context);
-                },
-              ),
+              _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : PrimaryButton(
+                    label:
+                        _knowledgeId == null
+                            ? 'Create Knowledge'
+                            : 'Update Knowledge',
+                    onPressed: _handleCreateKnowledge,
+                  ),
 
+      
               const SizedBox(height: 24),
             ],
           ),
