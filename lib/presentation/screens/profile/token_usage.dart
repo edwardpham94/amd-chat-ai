@@ -140,7 +140,7 @@ class _TokenUsageScreenState extends State<TokenUsageScreen> {
                       url,
                       mode: LaunchMode.externalApplication,
                     )) {
-                      if (context.mounted) {
+                      if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Could not launch URL')),
                         );
