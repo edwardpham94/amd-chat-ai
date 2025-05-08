@@ -15,7 +15,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _rememberLogin = false;
-  bool _isPasswordStrong = false;
   bool _obscurePassword = true;
   bool _isSubmitting = false;
 
@@ -24,16 +23,6 @@ class _LoginScreenState extends State<LoginScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
-  }
-
-  void _checkPasswordStrength(String password) {
-    // Simple password strength check
-    setState(() {
-      _isPasswordStrong =
-          password.length >= 8 &&
-          password.contains(RegExp(r'[A-Z]')) &&
-          password.contains(RegExp(r'[0-9]'));
-    });
   }
 
   Future<SignUpResponse?> login(String email, String password) async {
@@ -46,7 +35,7 @@ class _LoginScreenState extends State<LoginScreen> {
       await UserStorage.saveUserInfo(signInResponse);
       return signInResponse;
     } on DioException catch (e) {
-      print('Signin error: ${e.response?.data ?? e.message}');
+      debugPrint('Signin error: ${e.response?.data ?? e.message}');
       return null;
     }
   }
@@ -69,6 +58,8 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final response = await login(email, password);
 
+      if (!mounted) return;
+
       if (response != null) {
         ScaffoldMessenger.of(
           context,
@@ -80,13 +71,17 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       }
     } catch (e) {
+      if (!mounted) return;
+
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('An error occurred: $e')));
     } finally {
-      setState(() {
-        _isSubmitting = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
     }
   }
 
@@ -172,7 +167,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   TextField(
                     controller: _passwordController,
                     obscureText: _obscurePassword,
-                    onChanged: _checkPasswordStrength,
                     decoration: InputDecoration(
                       hintText: 'Create your password',
                       hintStyle: TextStyle(
@@ -218,21 +212,23 @@ class _LoginScreenState extends State<LoginScreen> {
                 children: [
                   Row(
                     children: [
-                      Icon(
-                        Icons.check_circle,
-                        size: 16,
-                        color:
-                            _isPasswordStrong ? Colors.green : Colors.grey[400],
+                      Checkbox(
+                        value: _rememberLogin,
+                        onChanged: (value) {
+                          setState(() {
+                            _rememberLogin = value ?? false;
+                          });
+                        },
+                        activeColor: const Color(0xFF6C63FF),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4),
+                        ),
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Strong password',
+                      const Text(
+                        'Remember login info',
                         style: TextStyle(
-                          fontSize: 12,
-                          color:
-                              _isPasswordStrong
-                                  ? Colors.green
-                                  : Colors.grey[600],
+                          fontSize: 14,
+                          color: Color(0xFF666666),
                         ),
                       ),
                     ],
@@ -250,26 +246,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       'Forgot password?',
                       style: TextStyle(fontSize: 12, color: Colors.redAccent),
                     ),
-                  ),
-                ],
-              ),
-              Row(
-                children: [
-                  Checkbox(
-                    value: _rememberLogin,
-                    onChanged: (value) {
-                      setState(() {
-                        _rememberLogin = value ?? false;
-                      });
-                    },
-                    activeColor: const Color(0xFF6C63FF),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                  const Text(
-                    'Remember login info',
-                    style: TextStyle(fontSize: 14, color: Color(0xFF666666)),
                   ),
                 ],
               ),

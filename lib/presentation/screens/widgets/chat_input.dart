@@ -20,7 +20,12 @@ class ChatInput extends StatelessWidget {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(
+              alpha: 0.1 * 255,
+              red: null,
+              green: null,
+              blue: null,
+            ),
             spreadRadius: 1,
             blurRadius: 5,
             offset: const Offset(0, -2),

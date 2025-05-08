@@ -255,7 +255,12 @@ class KnowledgeScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
+                          color: Colors.black.withValues(
+                            alpha: 0.05 * 2,
+                            red: null,
+                            green: null,
+                            blue: null,
+                          ),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -267,8 +272,11 @@ class KnowledgeScreen extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: (item['avatarColor'] as Color).withOpacity(
-                              0.1,
+                            color: (item['avatarColor'] as Color).withValues(
+                              alpha: 0.1 * 255,
+                              red: null,
+                              green: null,
+                              blue: null,
                             ),
                             borderRadius: BorderRadius.circular(10),
                           ),

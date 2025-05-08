@@ -32,10 +32,7 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
   bool _showPromptList = false; // Flag to show/hide the prompt list
   bool _isFetchingPrompts =
       false; // Flag to indicate if prompts are being fetched
-  String _searchQuery = ''; // Current search query
 
-
-  
   final List<Map<String, dynamic>> _aiModels = [
     {
       'name': 'gpt-4o',
@@ -106,8 +103,7 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
     final args =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     if (args != null && args['prompt'] != null) {
-      _messageController.text =
-          args['prompt'];
+      _messageController.text = args['prompt'];
     }
   }
 
@@ -145,7 +141,6 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
       });
     }
   }
-
 
   // Show conversation history modal
   void _showConversationHistoryModal() async {
@@ -621,7 +616,7 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
       ),
     );
   }
-  
+
   Widget _buildWelcomeMessage() {
     return ListView(
       padding: const EdgeInsets.all(24),
@@ -760,7 +755,6 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
                             ),
                           ),
                           onChanged: (value) {
-                            _searchQuery = value;
                             _fetchPrompts(
                               value,
                             ); // Fetch prompts as the user types
@@ -857,8 +851,6 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
       ),
     );
   }
-
-
 
   void _handlePromptSelect(String prompt) {
     setState(() {

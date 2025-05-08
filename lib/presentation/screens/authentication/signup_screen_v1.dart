@@ -13,7 +13,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _authService = AuthService();
-  bool _savePassword = false;
   bool _isPasswordStrong = false;
   bool _obscurePassword = true;
   bool _isSubmitting = false;
@@ -48,12 +47,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
     try {
       final response = await _authService.signUp(email, password);
+
+      if (!mounted) return;
+
       if (response != null && response.userId.isNotEmpty) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('Signup successful!')));
 
-        print('Signup successful! ${response.userId}');
+        debugPrint('Signup successful! ${response.userId}');
 
         Navigator.pushReplacementNamed(context, '/chat-ai');
       } else {
@@ -62,15 +64,19 @@ class _SignUpScreenState extends State<SignUpScreen> {
         );
       }
 
-      print('>>>>>>>>>>>>>>>>>> in UI: ${UserStorage.getUserId()}');
+      debugPrint('>>>>>>>>>>>>>>>>>> in UI: ${UserStorage.getUserId()}');
     } catch (e) {
+      if (!mounted) return;
+
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('An error occurred: $e')));
     } finally {
-      setState(() {
-        _isSubmitting = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
     }
   }
 
@@ -215,27 +221,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Checkbox(
-                    value: _savePassword,
-                    onChanged: (value) {
-                      setState(() {
-                        _savePassword = value ?? false;
-                      });
-                    },
-                    activeColor: const Color(0xFF6C63FF),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                  const Text(
-                    'Save password',
-                    style: TextStyle(fontSize: 14, color: Color(0xFF666666)),
-                  ),
-                ],
-              ),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed:
@@ -274,6 +259,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
+                            color: Colors.white,
                           ),
                         ),
               ),

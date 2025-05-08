@@ -1,4 +1,3 @@
-import 'package:amd_chat_ai/config/user_storage.dart';
 import 'package:amd_chat_ai/service/auth_service.dart';
 import 'package:flutter/material.dart';
 
@@ -96,6 +95,7 @@ class AppSidebar extends StatelessWidget {
               title: const Text('Logout'),
               onTap: () async {
                 await AuthService().logout();
+                if (!context.mounted) return;
                 Navigator.pop(context);
                 Navigator.pushReplacementNamed(context, '/login');
               },
