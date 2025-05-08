@@ -8,11 +8,11 @@ API Integration Guidelines
 When implementing a new API in the Flutter project, follow these steps:
 
 1. Model Definition
-- Create a new model class in the models/ folder.
+- Create a new model class in the model/ folder.
 - Ensure the model properly parses both the request and response data.
 
 2. Service Layer
-- Add a corresponding service in the services/ folder to handle the API call.
+- Add a corresponding service in the service/ folder to handle the API call.
 - Refer to existing service implementations for consistency in structure and style.
 
 3. UI Integration
