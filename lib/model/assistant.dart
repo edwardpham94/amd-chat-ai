@@ -6,7 +6,6 @@ class Assistant {
   final String userId;
   final bool isDefault;
   final bool isFavorite;
-  final bool isPublished;
   final DateTime createdAt;
   final DateTime updatedAt;
   final List<String> permissions;
@@ -19,7 +18,6 @@ class Assistant {
     required this.userId,
     required this.isDefault,
     required this.isFavorite,
-    required this.isPublished,
     required this.createdAt,
     required this.updatedAt,
     required this.permissions,
@@ -33,8 +31,7 @@ class Assistant {
       instructions: json['instructions'] as String,
       userId: json['userId'] as String,
       isDefault: json['isDefault'] as bool,
-      isFavorite: json['isFavorite'] as bool,
-      isPublished: json['isPublished'] ?? false,
+      isFavorite: json['isFavorite'] ?? bool,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
       permissions:
@@ -55,7 +52,6 @@ class Assistant {
       'userId': userId,
       'isDefault': isDefault,
       'isFavorite': isFavorite,
-      'isPublished': isPublished,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
       'permissions': permissions,

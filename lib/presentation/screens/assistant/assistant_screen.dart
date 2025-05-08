@@ -174,7 +174,6 @@ class _AssistantScreenState extends State<AssistantScreen> {
         userId: assistant.userId,
         isDefault: assistant.isDefault,
         isFavorite: !currentStatus,
-        isPublished: assistant.isPublished,
         createdAt: assistant.createdAt,
         updatedAt: assistant.updatedAt,
         permissions: assistant.permissions,
@@ -216,7 +215,6 @@ class _AssistantScreenState extends State<AssistantScreen> {
             userId: assistant.userId,
             isDefault: assistant.isDefault,
             isFavorite: currentStatus,
-            isPublished: assistant.isPublished,
             createdAt: assistant.createdAt,
             updatedAt: assistant.updatedAt,
             permissions: assistant.permissions,
@@ -240,7 +238,6 @@ class _AssistantScreenState extends State<AssistantScreen> {
           userId: assistant.userId,
           isDefault: assistant.isDefault,
           isFavorite: currentStatus,
-          isPublished: assistant.isPublished,
           createdAt: assistant.createdAt,
           updatedAt: assistant.updatedAt,
           permissions: assistant.permissions,
@@ -250,108 +247,6 @@ class _AssistantScreenState extends State<AssistantScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error updating favorite status: $e')),
-        );
-      }
-    }
-  }
-
-  Future<void> _togglePublished(String assistantId, bool currentStatus) async {
-    debugPrint(
-      'AssistantScreen: Toggling published for assistant $assistantId, current status: $currentStatus',
-    );
-
-    // Find the assistant
-    final assistantIndex = _assistants.indexWhere((p) => p.id == assistantId);
-    if (assistantIndex == -1) return;
-
-    final assistant = _assistants[assistantIndex];
-
-    // Optimistically update UI
-    setState(() {
-      final updatedAssistant = Assistant(
-        id: assistant.id,
-        assistantName: assistant.assistantName,
-        description: assistant.description,
-        instructions: assistant.instructions,
-        userId: assistant.userId,
-        isDefault: assistant.isDefault,
-        isFavorite: assistant.isFavorite,
-        isPublished: !currentStatus,
-        createdAt: assistant.createdAt,
-        updatedAt: assistant.updatedAt,
-        permissions: assistant.permissions,
-      );
-      _assistants[assistantIndex] = updatedAssistant;
-      debugPrint(
-        'AssistantScreen: UI updated optimistically, new published status: ${!currentStatus}',
-      );
-    });
-
-    // Call API to update published status
-    try {
-      debugPrint(
-        'AssistantScreen: Calling API to toggle published status to ${!currentStatus}',
-      );
-      final success = await _assistantService.togglePublished(
-        assistantId,
-        !currentStatus,
-      );
-
-      if (success) {
-        debugPrint('AssistantScreen: Successfully toggled published status');
-        // If we're filtering by published state, refresh the list
-        if (isPublishedSelected == currentStatus) {
-          debugPrint(
-            'AssistantScreen: Refreshing list after toggling published in filtered view',
-          );
-          _loadAssistants(refresh: true);
-        }
-      } else {
-        debugPrint('AssistantScreen: Failed to toggle published status');
-        // If API call fails, revert the UI change
-        setState(() {
-          final updatedAssistant = Assistant(
-            id: assistant.id,
-            assistantName: assistant.assistantName,
-            description: assistant.description,
-            instructions: assistant.instructions,
-            userId: assistant.userId,
-            isDefault: assistant.isDefault,
-            isFavorite: assistant.isFavorite,
-            isPublished: currentStatus,
-            createdAt: assistant.createdAt,
-            updatedAt: assistant.updatedAt,
-            permissions: assistant.permissions,
-          );
-          _assistants[assistantIndex] = updatedAssistant;
-        });
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Failed to update published status')),
-          );
-        }
-      }
-    } catch (e) {
-      // If an exception occurs, revert the UI change
-      setState(() {
-        final updatedAssistant = Assistant(
-          id: assistant.id,
-          assistantName: assistant.assistantName,
-          description: assistant.description,
-          instructions: assistant.instructions,
-          userId: assistant.userId,
-          isDefault: assistant.isDefault,
-          isFavorite: assistant.isFavorite,
-          isPublished: currentStatus,
-          createdAt: assistant.createdAt,
-          updatedAt: assistant.updatedAt,
-          permissions: assistant.permissions,
-        );
-        _assistants[assistantIndex] = updatedAssistant;
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error updating published status: $e')),
         );
       }
     }
@@ -751,9 +646,12 @@ class _AssistantScreenState extends State<AssistantScreen> {
                                 // Generate random color based on name
                                 final int colorValue =
                                     assistant.assistantName.hashCode;
-                                final Color avatarColor = Color(
-                                  (colorValue & 0xFFFFFF) | 0xFF000000,
-                                ).withOpacity(0.8);
+                                final Color avatarColor = Color.fromARGB(
+                                  204, // 0.8 opacity (204/255)
+                                  (colorValue & 0xFF0000) >> 16,
+                                  (colorValue & 0x00FF00) >> 8,
+                                  colorValue & 0x0000FF,
+                                );
 
                                 return Padding(
                                   padding: const EdgeInsets.symmetric(
@@ -831,27 +729,6 @@ class _AssistantScreenState extends State<AssistantScreen> {
                                                   assistant.isFavorite
                                                       ? 'Remove from favorites'
                                                       : 'Add to favorites',
-                                            ),
-                                            // Publish/Unpublish button
-                                            IconButton(
-                                              icon: Icon(
-                                                assistant.isPublished
-                                                    ? Icons.public
-                                                    : Icons.public_off,
-                                                color:
-                                                    assistant.isPublished
-                                                        ? Colors.green
-                                                        : Colors.grey,
-                                              ),
-                                              onPressed:
-                                                  () => _togglePublished(
-                                                    assistant.id,
-                                                    assistant.isPublished,
-                                                  ),
-                                              tooltip:
-                                                  assistant.isPublished
-                                                      ? 'Unpublish assistant'
-                                                      : 'Publish assistant',
                                             ),
                                             // Delete button
                                             IconButton(

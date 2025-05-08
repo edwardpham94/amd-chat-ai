@@ -149,7 +149,6 @@ class AssistantService {
               userId: response.data['userId'] as String? ?? userId,
               isDefault: response.data['isDefault'] as bool? ?? false,
               isFavorite: response.data['isFavorite'] as bool? ?? false,
-              isPublished: response.data['isPublished'] as bool? ?? false,
               createdAt:
                   response.data['createdAt'] != null
                       ? DateTime.parse(response.data['createdAt'] as String)
@@ -347,7 +346,6 @@ class AssistantService {
               userId: response.data['userId'] as String? ?? userId,
               isDefault: response.data['isDefault'] as bool? ?? false,
               isFavorite: response.data['isFavorite'] as bool? ?? false,
-              isPublished: response.data['isPublished'] as bool? ?? false,
               createdAt:
                   response.data['createdAt'] != null
                       ? DateTime.parse(response.data['createdAt'] as String)
