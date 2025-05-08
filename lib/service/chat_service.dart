@@ -51,9 +51,10 @@ class ChatAIService {
       debugPrint('Fetching messages for conversation: $conversationId');
 
       final response = await DioClients.jarvisClient.get(
-        '/api/v1/ai-chat/conversations/$conversationId/messages',
+        '/api/v1/ai-chat/conversations/$conversationId/messages/',
         queryParameters: {
-          'assistantModel': 'dify', // Required
+          'assistantModel': 'dify',
+          if (assistantId != null) 'assistantId': assistantId,
         },
         options: Options(
           headers: {

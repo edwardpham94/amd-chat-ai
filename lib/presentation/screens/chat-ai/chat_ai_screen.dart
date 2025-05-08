@@ -29,6 +29,7 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
   String? _currentConversationId;
 
   List<String> _prompts = []; // List to store fetched prompts
+  List<String> _promptContents = []; // List to store fetched prompts
   bool _showPromptList = false; // Flag to show/hide the prompt list
   bool _isFetchingPrompts =
       false; // Flag to indicate if prompts are being fetched
@@ -102,8 +103,28 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
     super.didChangeDependencies();
     final args =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-    if (args != null && args['prompt'] != null) {
-      _messageController.text = args['prompt'];
+    if (args != null) {
+      if (args['showPromptModal'] == true &&
+          args['promptTitle'] != null &&
+          args['promptDescription'] != null) {
+        // Delay to ensure the widget is built completely
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _showPromptSelectionModal(
+            args['promptTitle'],
+            args['promptDescription'],
+          );
+        });
+      } else if (args['prompt'] != null) {
+        _messageController.text = args['prompt'];
+
+        // If sendImmediately flag is true, send the message automatically
+        if (args['sendImmediately'] == true) {
+          // Use a post-frame callback to ensure the UI is built
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _handleSendMessage();
+          });
+        }
+      }
     }
   }
 
@@ -124,18 +145,22 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
 
     setState(() {
       _isFetchingPrompts = true;
+      _showPromptList = true; // Always show prompt list when fetching
     });
 
     final response = await _promptService.getPrompts(searchQuery: query);
     if (response != null) {
       setState(() {
         _prompts = response.items.map((prompt) => prompt.title).toList();
+        _promptContents =
+            response.items.map((prompt) => prompt.content).toList();
         _showPromptList = _prompts.isNotEmpty;
         _isFetchingPrompts = false;
       });
     } else {
       setState(() {
         _prompts = [];
+        _promptContents = [];
         _showPromptList = false;
         _isFetchingPrompts = false;
       });
@@ -266,6 +291,7 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
     try {
       final response = await _chatService.fetchConversationHistory(
         conversationId: conversationId,
+        assistantId: _selectedModel,
       );
 
       // If timeout already occurred, don't update state
@@ -654,7 +680,12 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
           (template) => PromptTemplate(
             title: template['title'],
             description: template['description'],
-            onTap: () => _handlePromptSelect(template['prompt']),
+            onTap: () {
+              _showPromptSelectionModal(
+                template['title'],
+                template['description'],
+              );
+            },
           ),
         ),
       ],
@@ -755,9 +786,16 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
                             ),
                           ),
                           onChanged: (value) {
-                            _fetchPrompts(
-                              value,
-                            ); // Fetch prompts as the user types
+                            // Only fetch prompts if the text starts with '/'
+                            if (value.startsWith('/')) {
+                              // Remove the '/' prefix for the search query
+                              _fetchPrompts(value.substring(1));
+                            } else {
+                              // Hide prompt list if text doesn't start with '/'
+                              setState(() {
+                                _showPromptList = false;
+                              });
+                            }
                           },
                           onSubmitted: (_) async => await _handleSendMessage(),
                         ),
@@ -798,14 +836,18 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
                                 shrinkWrap: true,
                                 itemCount: _prompts.length,
                                 itemBuilder: (context, index) {
+                                  final promptTitle = _prompts[index];
+                                  final promptContent = _promptContents[index];
                                   return ListTile(
-                                    title: Text(_prompts[index]),
+                                    title: Text(promptTitle),
                                     onTap: () {
                                       setState(() {
-                                        _messageController.text =
-                                            _prompts[index];
                                         _showPromptList = false;
                                       });
+                                      _showPromptSelectionModal(
+                                        promptTitle,
+                                        promptContent,
+                                      );
                                     },
                                   );
                                 },
@@ -844,6 +886,9 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
                     ],
                   ),
                 ),
+                const SizedBox(
+                  width: 8,
+                ), // Add some padding to the right of the Send button
               ],
             ),
           ],
@@ -852,9 +897,173 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
     );
   }
 
-  void _handlePromptSelect(String prompt) {
-    setState(() {
-      _messageController.text = prompt;
-    });
+  void _showPromptSelectionModal(String promptTitle, String promptDescription) {
+    final TextEditingController inputController = TextEditingController();
+    debugPrint(
+      'Showing prompt modal - Title: $promptTitle, Content: $promptDescription',
+    );
+
+    // Show a simpler dialog that is guaranteed to close properly
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext dialogContext) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.blue.shade700, Colors.blue.shade500],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                  ),
+                ),
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.emoji_objects_outlined,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        promptTitle,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      onPressed: () => Navigator.pop(dialogContext),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Content
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Prompt section
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade200),
+                      ),
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Prompt',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            promptDescription,
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Input section
+                    const Text(
+                      'Your Input',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: inputController,
+                      decoration: InputDecoration(
+                        hintText: 'Add details to your prompt...',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
+                      ),
+                      maxLines: 3,
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Buttons
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(dialogContext),
+                          child: const Text('Cancel'),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue.shade600,
+                            foregroundColor: Colors.white,
+                          ),
+                          onPressed: () {
+                            final userInput = inputController.text.trim();
+                            final formattedPrompt =
+                                '#About Yourself: $promptDescription + \nMy Problem: $userInput';
+                            Navigator.pop(dialogContext);
+
+                            setState(() {
+                              _messageController.text = formattedPrompt;
+                            });
+                            _handleSendMessage();
+                          },
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.send, size: 16),
+                              SizedBox(width: 8),
+                              Text('Send'),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }
