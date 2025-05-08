@@ -4,7 +4,7 @@ class ConversationMessage {
   final String query;
   final String answer;
   final DateTime createdAt;
-  final Map<String, dynamic> inputs;
+  final Map<String, dynamic>? inputs;
   final MessageType userType = MessageType.user;
   final MessageType assistantType = MessageType.assistant;
 
@@ -12,7 +12,7 @@ class ConversationMessage {
     required this.query,
     required this.answer,
     required this.createdAt,
-    required this.inputs,
+    this.inputs,
   });
 
   factory ConversationMessage.fromJson(Map<String, dynamic> json) {
@@ -20,7 +20,7 @@ class ConversationMessage {
       query: json['query'] as String,
       answer: json['answer'] as String,
       createdAt: DateTime.parse(json['createdAt'] as String),
-      inputs: json['inputs'] as Map<String, dynamic>,
+      inputs: json['inputs'] as Map<String, dynamic>?,
     );
   }
 }
