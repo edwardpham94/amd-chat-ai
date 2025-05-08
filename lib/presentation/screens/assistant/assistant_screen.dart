@@ -19,6 +19,10 @@ class _AssistantScreenState extends State<AssistantScreen> {
   bool _hasError = false;
   final TextEditingController _searchController = TextEditingController();
 
+  // Sort options
+  String _sortField = 'createdAt'; // Default sort by created date
+  String _sortOrder = 'DESC'; // Default newest first
+
   final AssistantService _assistantService = AssistantService();
   List<Assistant> _assistants = [];
   int _currentOffset = 0;
@@ -113,6 +117,8 @@ class _AssistantScreenState extends State<AssistantScreen> {
         isFavorite: showFavoritesOnly ? true : null,
         isPublished: isPublishedSelected ? true : null,
         searchQuery: searchQuery.isNotEmpty ? searchQuery : null,
+        orderField: _sortField,
+        order: _sortOrder,
       );
 
       if (response != null) {
@@ -543,6 +549,135 @@ class _AssistantScreenState extends State<AssistantScreen> {
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: IntrinsicHeight(),
+                    ),
+
+                    // Sort options dropdown
+                    PopupMenuButton<Map<String, String>>(
+                      tooltip: 'Sort options',
+                      onSelected: (Map<String, String> item) {
+                        setState(() {
+                          _sortField = item['field']!;
+                          _sortOrder = item['order']!;
+                        });
+                        _loadAssistants(refresh: true);
+                      },
+                      itemBuilder:
+                          (context) => [
+                            PopupMenuItem(
+                              value: {'field': 'createdAt', 'order': 'DESC'},
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.arrow_downward,
+                                    size: 16,
+                                    color:
+                                        _sortField == 'createdAt' &&
+                                                _sortOrder == 'DESC'
+                                            ? const Color(0xFF415DF2)
+                                            : Colors.grey,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Text('Newest first'),
+                                ],
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: {'field': 'createdAt', 'order': 'ASC'},
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.arrow_upward,
+                                    size: 16,
+                                    color:
+                                        _sortField == 'createdAt' &&
+                                                _sortOrder == 'ASC'
+                                            ? const Color(0xFF415DF2)
+                                            : Colors.grey,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Text('Oldest first'),
+                                ],
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: {'field': 'assistantName', 'order': 'ASC'},
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.sort_by_alpha,
+                                    size: 16,
+                                    color:
+                                        _sortField == 'assistantName' &&
+                                                _sortOrder == 'ASC'
+                                            ? const Color(0xFF415DF2)
+                                            : Colors.grey,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Text('Name (A-Z)'),
+                                ],
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: {
+                                'field': 'assistantName',
+                                'order': 'DESC',
+                              },
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.sort_by_alpha,
+                                    size: 16,
+                                    color:
+                                        _sortField == 'assistantName' &&
+                                                _sortOrder == 'DESC'
+                                            ? const Color(0xFF415DF2)
+                                            : Colors.grey,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Text('Name (Z-A)'),
+                                ],
+                              ),
+                            ),
+                          ],
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              _sortField == 'createdAt'
+                                  ? _sortOrder == 'DESC'
+                                      ? Icons.arrow_downward
+                                      : Icons.arrow_upward
+                                  : Icons.sort_by_alpha,
+                              size: 16,
+                              color: const Color(0xFF415DF2),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              _sortField == 'createdAt'
+                                  ? _sortOrder == 'DESC'
+                                      ? 'Newest'
+                                      : 'Oldest'
+                                  : _sortOrder == 'ASC'
+                                  ? 'A-Z'
+                                  : 'Z-A',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF415DF2),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                 ),

@@ -13,12 +13,16 @@ class AssistantService {
   /// - isFavorite: Optional filter for favorite assistants
   /// - isPublished: Optional filter for published/unpublished assistants
   /// - searchQuery: Optional search term
+  /// - orderField: Field to sort by (e.g., 'createdAt', 'assistantName')
+  /// - order: Sort direction ('ASC' or 'DESC')
   Future<AssistantResponse?> getAssistants({
     int offset = 0,
     int limit = 10,
     bool? isFavorite,
     bool? isPublished,
     String? searchQuery,
+    String? orderField,
+    String? order,
   }) async {
     try {
       debugPrint("AssistantService: Starting getAssistants call");
@@ -40,6 +44,15 @@ class AssistantService {
 
       if (searchQuery != null && searchQuery.isNotEmpty) {
         queryParams['q'] = searchQuery;
+      }
+
+      // Add sorting parameters if provided
+      if (orderField != null && orderField.isNotEmpty) {
+        queryParams['order_field'] = orderField;
+      }
+
+      if (order != null && order.isNotEmpty) {
+        queryParams['order'] = order;
       }
 
       // Get user ID
