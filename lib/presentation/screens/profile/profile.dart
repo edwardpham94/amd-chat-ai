@@ -1,48 +1,141 @@
-import 'package:amd_chat_ai/presentation/screens/profile/premium_modal.dart';
+import 'package:amd_chat_ai/model/user_profile.dart';
+import 'package:amd_chat_ai/presentation/screens/profile/account_information.dart';
+import 'package:amd_chat_ai/presentation/screens/profile/token_usage.dart';
+import 'package:amd_chat_ai/service/user_service.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../widgets/base_screen.dart';
 import '../widgets/user_avatar.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  final UserService _userService = UserService();
+  UserProfile? _userProfile;
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserProfile();
+  }
+
+  Future<void> _fetchUserProfile() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+
+      final userProfile = await _userService.getUserProfile();
+
+      if (userProfile == null) {
+        setState(() {
+          _errorMessage = 'Failed to load profile. Please try again.';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      setState(() {
+        _userProfile = userProfile;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Failed to load profile: $e';
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return BaseScreen(
-      title: 'Account Settings',
+      title: 'User Profile',
       showBackButton: true,
-      actions: [
-        IconButton(icon: const Icon(Icons.more_vert), onPressed: () {}),
-      ],
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildProfileHeader(context),
-            const SizedBox(height: 24),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                'Basic Settings',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF2D2D5F),
+      body:
+          _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _errorMessage != null
+              ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(_errorMessage!, textAlign: TextAlign.center),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: _fetchUserProfile,
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              )
+              : RefreshIndicator(
+                onRefresh: _fetchUserProfile,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildProfileHeader(context),
+                      const SizedBox(height: 24),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          'Basic Settings',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF2D2D5F),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildSettingsItem(
+                        context,
+                        icon: Icons.person_outline,
+                        title: 'Account Information',
+                        onTap: () {
+                          if (_userProfile != null) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder:
+                                    (context) => AccountInformationScreen(
+                                      userProfile: _userProfile!,
+                                    ),
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                      _buildSettingsItem(
+                        context,
+                        icon: Icons.token_outlined,
+                        title: 'Token Usage',
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const TokenUsageScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 24),
+                      _buildPremiumCard(context),
+                      const SizedBox(height: 40),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-            _buildSettingsItem(
-              context,
-              icon: Icons.person_outline,
-              title: 'Account Information',
-              onTap: () {},
-            ),
-            const SizedBox(height: 24),
-            _buildPremiumCard(context),
-          ],
-        ),
-      ),
     );
   }
 
@@ -54,13 +147,18 @@ class ProfileScreen extends StatelessWidget {
         children: [
           const UserAvatar(size: 100),
           const SizedBox(height: 16),
-          const Text(
-            'Nguyen Van Anh',
-            style: TextStyle(
+          Text(
+            _userProfile?.username ?? 'Guest User',
+            style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
               color: Colors.blue,
             ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _userProfile?.email ?? 'No email available',
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
           ),
         ],
       ),
@@ -118,11 +216,18 @@ class ProfileScreen extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(left: 16, bottom: 16),
             child: ElevatedButton(
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (context) => const PremiumModal(),
-                );
+              onPressed: () async {
+                final Uri url = Uri.parse('https://dev.jarvis.cx/pricing');
+                if (!await launchUrl(
+                  url,
+                  mode: LaunchMode.externalApplication,
+                )) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Could not launch URL')),
+                    );
+                  }
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFFFC107),
