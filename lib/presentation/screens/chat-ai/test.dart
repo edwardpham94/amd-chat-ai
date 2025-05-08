@@ -17,7 +17,7 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
   bool _showWelcomeMessage = true;
   String _selectedModel = 'GPT-4o mini';
   bool _showModelSelector = false;
-  int _tokenCount = 30;
+  final int _tokenCount = 30;
 
   final List<Map<String, dynamic>> _aiModels = [
     {

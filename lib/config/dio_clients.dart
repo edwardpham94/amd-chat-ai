@@ -31,7 +31,7 @@ class DioClients {
         options: Options(headers: {'X-Stack-Refresh-Token': refreshToken}),
       );
 
-      debugPrint('Refresh response: ${response}');
+      debugPrint('Refresh response: $response');
 
       if (response.statusCode == 200 && response.data['access_token'] != null) {
         final newToken = response.data['access_token'];

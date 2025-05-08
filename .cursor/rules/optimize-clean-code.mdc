@@ -1,0 +1,27 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+Code Hygiene Rule: Fix Non-Disruptive Warnings
+
+When resolving problems or warnings in the code (as shown in the IDE's Problems tab), follow these rules:
+
+1. Do Not Change Logic, UI, or Flow
+
+- Ensure no changes affect business logic, user interface, or data flow.
+
+2. Only Fix Safe Warnings
+- Examples include:
+    + Unused Fields/Variables: Remove if they're declared but never used (e.g., _searchQuery).
+    + Dead Code: Eliminate unreachable code that has no side effects.
+    + Unnecessary Imports: Remove unused import statements.
+    + Deprecated API Usage: Migrate to the recommended alternatives only if the change is straightforward and safe.
+    + Formatting Issues: Apply formatting (e.g., consistent spacing, line length) using dart format.
+
+4. Do Not Introduce Side Effects
+- No changes that impact runtime behavior, API calls, state management, or screen rendering.
+
+5. Validation Before Commit
+- Run flutter analyze and ensure no new warnings or errors are introduced.
+- Verify the app builds and behaves exactly as before.
