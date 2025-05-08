@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:amd_chat_ai/model/assistant.dart';
 import 'package:amd_chat_ai/presentation/screens/widgets/base_screen.dart';
+import 'package:amd_chat_ai/service/assistant_service.dart';
 
 class UpdateAssistantScreen extends StatefulWidget {
   const UpdateAssistantScreen({super.key});
@@ -13,6 +15,13 @@ class _UpdateAssistantScreenState extends State<UpdateAssistantScreen> {
   final _instructionsController = TextEditingController();
   final _descriptionController = TextEditingController();
   String? _selectedKnowledge;
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  // For API integration
+  final AssistantService _assistantService = AssistantService();
+  Assistant? _assistant;
+  String? _assistantId;
 
   // Sample knowledge data - Replace with your actual knowledge list
   final List<String> _knowledgeList = [
@@ -28,11 +37,111 @@ class _UpdateAssistantScreenState extends State<UpdateAssistantScreen> {
   ];
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    // Get assistant data from route arguments if not already initialized
+    if (_assistant == null) {
+      final args = ModalRoute.of(context)?.settings.arguments;
+      if (args is Assistant) {
+        _assistant = args;
+        _assistantId = _assistant?.id;
+        _initializeFormFields();
+      } else if (args is Map<String, dynamic>) {
+        _assistantId = args['id'] as String?;
+        _initializeFormFieldsFromMap(args);
+      }
+    }
+  }
+
+  void _initializeFormFields() {
+    if (_assistant != null) {
+      _nameController.text = _assistant!.assistantName;
+      _instructionsController.text = _assistant!.instructions;
+      _descriptionController.text = _assistant!.description;
+    }
+  }
+
+  void _initializeFormFieldsFromMap(Map<String, dynamic> data) {
+    _nameController.text = data['assistantName'] as String? ?? '';
+    _instructionsController.text = data['instructions'] as String? ?? '';
+    _descriptionController.text = data['description'] as String? ?? '';
+
+    // Optional: If the knowledge base is passed in the data
+    if (data.containsKey('knowledge')) {
+      final knowledge = data['knowledge'] as String?;
+      if (knowledge != null && _knowledgeList.contains(knowledge)) {
+        setState(() {
+          _selectedKnowledge = knowledge;
+        });
+      }
+    }
+  }
+
+  @override
   void dispose() {
     _nameController.dispose();
     _instructionsController.dispose();
     _descriptionController.dispose();
     super.dispose();
+  }
+
+  Future<void> _updateAssistant() async {
+    if (_assistantId == null) {
+      setState(() {
+        _errorMessage = 'Cannot update assistant: missing ID';
+      });
+      return;
+    }
+
+    if (_nameController.text.trim().isEmpty ||
+        _instructionsController.text.trim().isEmpty ||
+        _descriptionController.text.trim().isEmpty) {
+      setState(() {
+        _errorMessage = 'Please complete all required fields';
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final updatedAssistant = await _assistantService.updateAssistant(
+        assistantId: _assistantId!,
+        assistantName: _nameController.text.trim(),
+        description: _descriptionController.text.trim(),
+        instructions: _instructionsController.text.trim(),
+      );
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (updatedAssistant != null) {
+        if (mounted) {
+          // Log all data including knowledge field (even though it's not used in API)
+          debugPrint(
+            'Updated Assistant: ${_nameController.text} with knowledge: $_selectedKnowledge',
+          );
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Assistant updated successfully')),
+          );
+          Navigator.of(context).pop(true); // Return true to indicate success
+        }
+      } else {
+        setState(() {
+          _errorMessage = 'Failed to update assistant. Please try again.';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'An error occurred: $e';
+      });
+    }
   }
 
   @override
@@ -47,6 +156,23 @@ class _UpdateAssistantScreenState extends State<UpdateAssistantScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (_errorMessage != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 20),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      _errorMessage!,
+                      style: const TextStyle(color: Colors.red),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+
               // Assistant Name
               _buildSectionTitle('Assistant Name'),
               _buildTextField(
@@ -306,37 +432,35 @@ class _UpdateAssistantScreenState extends State<UpdateAssistantScreen> {
                     ),
                   ],
                 ),
-                child: ElevatedButton(
-                  onPressed: () {
-                    // Handle update assistant logic
-                    final assistant = {
-                      'name': _nameController.text,
-                      'instructions': _instructionsController.text,
-                      'description': _descriptionController.text,
-                      'knowledge': _selectedKnowledge,
-                    };
-
-                    debugPrint('Updated Assistant: $assistant');
-                    Navigator.pop(context);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    backgroundColor: const Color(0xFF415DF2),
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  child: const Text(
-                    'Update Assistant',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
+                child:
+                    _isLoading
+                        ? Center(
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              const Color(0xFF415DF2),
+                            ),
+                          ),
+                        )
+                        : ElevatedButton(
+                          onPressed: _updateAssistant,
+                          style: ElevatedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            backgroundColor: const Color(0xFF415DF2),
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          child: const Text(
+                            'Update Assistant',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
               ),
 
               const SizedBox(height: 24),

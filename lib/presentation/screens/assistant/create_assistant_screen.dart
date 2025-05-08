@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:amd_chat_ai/presentation/screens/widgets/base_screen.dart';
 import 'package:amd_chat_ai/presentation/screens/widgets/primary_button.dart';
+import 'package:amd_chat_ai/service/assistant_service.dart';
 
 class CreateAssistantScreen extends StatefulWidget {
   const CreateAssistantScreen({super.key});
@@ -14,6 +15,10 @@ class _CreateAssistantScreenState extends State<CreateAssistantScreen> {
   final _instructionsController = TextEditingController();
   final _descriptionController = TextEditingController();
   String? _selectedKnowledge;
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  final AssistantService _assistantService = AssistantService();
 
   // Sample knowledge data - Replace with your actual knowledge list
   final List<String> _knowledgeList = [
@@ -36,6 +41,48 @@ class _CreateAssistantScreenState extends State<CreateAssistantScreen> {
     super.dispose();
   }
 
+  Future<void> _createAssistant() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      // Handle create assistant logic with API
+      final assistant = await _assistantService.createAssistant(
+        assistantName: _nameController.text.trim(),
+        description: _descriptionController.text.trim(),
+        instructions: _instructionsController.text.trim(),
+      );
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (assistant != null) {
+        if (mounted) {
+          // Log all data including knowledge field (even though it's not used in API)
+          debugPrint(
+            'Created Assistant: ${_nameController.text} with knowledge: $_selectedKnowledge',
+          );
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Assistant created successfully')),
+          );
+          Navigator.of(context).pop(true); // Return true to indicate success
+        }
+      } else {
+        setState(() {
+          _errorMessage = 'Failed to create assistant. Please try again.';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'An error occurred: $e';
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return BaseScreen(
@@ -48,6 +95,23 @@ class _CreateAssistantScreenState extends State<CreateAssistantScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (_errorMessage != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 20),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      _errorMessage!,
+                      style: const TextStyle(color: Colors.red),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+
               // Assistant Name
               _buildSectionTitle('Assistant Name'),
               _buildTextField(
@@ -307,21 +371,19 @@ class _CreateAssistantScreenState extends State<CreateAssistantScreen> {
                     ),
                   ],
                 ),
-                child: PrimaryButton(
-                  label: 'Create Assistant',
-                  onPressed: () {
-                    // Handle create assistant logic
-                    final assistant = {
-                      'name': _nameController.text,
-                      'instructions': _instructionsController.text,
-                      'description': _descriptionController.text,
-                      'knowledge': _selectedKnowledge,
-                    };
-
-                    debugPrint('Created Assistant: $assistant');
-                    Navigator.pop(context);
-                  },
-                ),
+                child:
+                    _isLoading
+                        ? Center(
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              const Color(0xFF415DF2),
+                            ),
+                          ),
+                        )
+                        : PrimaryButton(
+                          label: 'Create Assistant',
+                          onPressed: _createAssistant,
+                        ),
               ),
 
               const SizedBox(height: 24),
