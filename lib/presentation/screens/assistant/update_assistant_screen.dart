@@ -200,7 +200,12 @@ class _UpdateAssistantScreenState extends State<UpdateAssistantScreen> {
                   child: Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const Color.fromARGB(26, 255, 0, 0), // 0.1 opacity
+                      color: const Color.fromRGBO(
+                        255,
+                        0,
+                        0,
+                        0.1,
+                      ), // 0.1 opacity
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
@@ -364,7 +369,7 @@ class _UpdateAssistantScreenState extends State<UpdateAssistantScreen> {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF415DF2).withAlpha(77),
+                      color: const Color.fromRGBO(65, 93, 242, 0.3),
                       blurRadius: 15,
                       offset: const Offset(0, 8),
                     ),
@@ -375,14 +380,19 @@ class _UpdateAssistantScreenState extends State<UpdateAssistantScreen> {
                         ? Center(
                           child: CircularProgressIndicator(
                             valueColor: AlwaysStoppedAnimation<Color>(
-                              const Color(0xFF415DF2),
+                              const Color.fromRGBO(65, 93, 242, 1.0),
                             ),
                           ),
                         )
                         : ElevatedButton(
                           onPressed: _updateAssistant,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF415DF2),
+                            backgroundColor: const Color.fromRGBO(
+                              65,
+                              93,
+                              242,
+                              1.0,
+                            ),
                             foregroundColor: Colors.white,
                             elevation: 0,
                             shadowColor: Colors.transparent,
@@ -594,9 +604,12 @@ class _UpdateAssistantScreenState extends State<UpdateAssistantScreen> {
                                       vertical: 2,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: const Color(
-                                        0xFF3B5998,
-                                      ).withOpacity(0.1),
+                                      color: const Color.fromRGBO(
+                                        59,
+                                        89,
+                                        152,
+                                        0.1,
+                                      ),
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: const Text(
@@ -778,7 +791,7 @@ class _UpdateAssistantScreenState extends State<UpdateAssistantScreen> {
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withAlpha(26),
                   blurRadius: 20,
                   offset: const Offset(0, 10),
                 ),
@@ -809,11 +822,11 @@ class _UpdateAssistantScreenState extends State<UpdateAssistantScreen> {
                         width: 80,
                         height: 80,
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: Colors.white.withAlpha(51),
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.white.withOpacity(0.1),
+                              color: Colors.white.withAlpha(26),
                               blurRadius: 15,
                               spreadRadius: 5,
                             ),
@@ -869,14 +882,14 @@ class _UpdateAssistantScreenState extends State<UpdateAssistantScreen> {
                             gradient: LinearGradient(
                               colors: [
                                 Colors.grey.shade50,
-                                Colors.grey.shade100.withOpacity(0.5),
+                                Colors.grey.shade100.withAlpha(128),
                               ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(
-                              color: Colors.grey.withOpacity(0.2),
+                              color: Colors.grey.withAlpha(26),
                               width: 1,
                             ),
                           ),
@@ -894,9 +907,7 @@ class _UpdateAssistantScreenState extends State<UpdateAssistantScreen> {
                                           Container(
                                             padding: const EdgeInsets.all(6),
                                             decoration: BoxDecoration(
-                                              color: Colors.red.withOpacity(
-                                                0.1,
-                                              ),
+                                              color: Colors.red.withAlpha(51),
                                               shape: BoxShape.circle,
                                             ),
                                             child: const Icon(
@@ -947,14 +958,14 @@ class _UpdateAssistantScreenState extends State<UpdateAssistantScreen> {
                           gradient: LinearGradient(
                             colors: [
                               Colors.red.shade50,
-                              Colors.red.shade100.withOpacity(0.5),
+                              Colors.red.shade100.withAlpha(128),
                             ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
-                            color: Colors.red.withOpacity(0.25),
+                            color: Colors.red.withAlpha(64),
                             width: 1,
                           ),
                         ),
@@ -967,7 +978,7 @@ class _UpdateAssistantScreenState extends State<UpdateAssistantScreen> {
                                 shape: BoxShape.circle,
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.red.withOpacity(0.2),
+                                    color: Colors.red.withAlpha(51),
                                     blurRadius: 8,
                                     offset: const Offset(0, 2),
                                   ),
@@ -1010,7 +1021,7 @@ class _UpdateAssistantScreenState extends State<UpdateAssistantScreen> {
                               },
                               style: TextButton.styleFrom(
                                 foregroundColor: const Color(0xFF666666),
-                                backgroundColor: Colors.grey.withOpacity(0.1),
+                                backgroundColor: Colors.grey.withAlpha(26),
                                 padding: const EdgeInsets.symmetric(
                                   vertical: 16,
                                 ),
@@ -1038,9 +1049,12 @@ class _UpdateAssistantScreenState extends State<UpdateAssistantScreen> {
                                 borderRadius: BorderRadius.circular(14),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: const Color(
-                                      0xFFFF414D,
-                                    ).withOpacity(0.3),
+                                    color: const Color.fromRGBO(
+                                      255,
+                                      65,
+                                      77,
+                                      0.3,
+                                    ),
                                     blurRadius: 10,
                                     offset: const Offset(0, 4),
                                   ),
@@ -1126,13 +1140,16 @@ class _UpdateAssistantScreenState extends State<UpdateAssistantScreen> {
                                             'Failed to remove some knowledge bases: ${failedToDelete.join(", ")}';
                                       }
 
+                                      // Store context reference for later use
+                                      final currentContext = context;
+
                                       // Scroll to top to show error message
                                       Future.delayed(
                                         const Duration(milliseconds: 100),
                                         () {
-                                          if (context.mounted) {
+                                          if (mounted) {
                                             Scrollable.ensureVisible(
-                                              context,
+                                              currentContext,
                                               alignment: 0.0,
                                               duration: const Duration(
                                                 milliseconds: 600,
@@ -1144,10 +1161,15 @@ class _UpdateAssistantScreenState extends State<UpdateAssistantScreen> {
                                     }
                                   });
 
+                                  // Store context before async operation
+                                  final currentContext = context;
+
                                   // Show success message outside of setState
                                   if (successfullyDeleted.isNotEmpty &&
-                                      context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      mounted) {
+                                    ScaffoldMessenger.of(
+                                      currentContext,
+                                    ).showSnackBar(
                                       SnackBar(
                                         content: Text(
                                           successfullyDeleted.length == 1
@@ -1271,11 +1293,14 @@ class _UpdateAssistantScreenState extends State<UpdateAssistantScreen> {
               'Failed to import some knowledge bases: ${failedToImport.join(", ")}';
         }
 
+        // Store context reference for later use
+        final currentContext = context;
+
         // Scroll to top to show error message
         Future.delayed(const Duration(milliseconds: 100), () {
-          if (context.mounted) {
+          if (mounted) {
             Scrollable.ensureVisible(
-              context,
+              currentContext,
               alignment: 0.0,
               duration: const Duration(milliseconds: 600),
             );
@@ -1287,13 +1312,13 @@ class _UpdateAssistantScreenState extends State<UpdateAssistantScreen> {
 
   // Add delete confirmation dialog method
   Future<void> _showDeleteConfirmationDialog(
-    BuildContext context,
+    BuildContext parentContext,
     String knowledgeId,
     String knowledgeName,
     int index,
   ) async {
     await showGeneralDialog(
-      context: context,
+      context: parentContext,
       barrierDismissible: false,
       barrierColor: Colors.black54,
       transitionDuration: const Duration(milliseconds: 300),
@@ -1322,7 +1347,7 @@ class _UpdateAssistantScreenState extends State<UpdateAssistantScreen> {
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withAlpha(26),
                   blurRadius: 20,
                   offset: const Offset(0, 10),
                 ),
@@ -1353,11 +1378,11 @@ class _UpdateAssistantScreenState extends State<UpdateAssistantScreen> {
                         width: 80,
                         height: 80,
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: Colors.white.withAlpha(51),
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.white.withOpacity(0.1),
+                              color: Colors.white.withAlpha(26),
                               blurRadius: 15,
                               spreadRadius: 5,
                             ),
@@ -1426,14 +1451,14 @@ class _UpdateAssistantScreenState extends State<UpdateAssistantScreen> {
                           gradient: LinearGradient(
                             colors: [
                               Colors.red.shade50,
-                              Colors.red.shade100.withOpacity(0.5),
+                              Colors.red.shade100.withAlpha(128),
                             ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
-                            color: Colors.red.withOpacity(0.25),
+                            color: Colors.red.withAlpha(64),
                             width: 1,
                           ),
                         ),
@@ -1446,7 +1471,7 @@ class _UpdateAssistantScreenState extends State<UpdateAssistantScreen> {
                                 shape: BoxShape.circle,
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.red.withOpacity(0.2),
+                                    color: Colors.red.withAlpha(51),
                                     blurRadius: 8,
                                     offset: const Offset(0, 2),
                                   ),
@@ -1487,7 +1512,7 @@ class _UpdateAssistantScreenState extends State<UpdateAssistantScreen> {
                               },
                               style: TextButton.styleFrom(
                                 foregroundColor: const Color(0xFF666666),
-                                backgroundColor: Colors.grey.withOpacity(0.1),
+                                backgroundColor: Colors.grey.withAlpha(26),
                                 padding: const EdgeInsets.symmetric(
                                   vertical: 16,
                                 ),
@@ -1515,9 +1540,12 @@ class _UpdateAssistantScreenState extends State<UpdateAssistantScreen> {
                                 borderRadius: BorderRadius.circular(14),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: const Color(
-                                      0xFFFF414D,
-                                    ).withOpacity(0.3),
+                                    color: const Color.fromRGBO(
+                                      255,
+                                      65,
+                                      77,
+                                      0.3,
+                                    ),
                                     blurRadius: 10,
                                     offset: const Offset(0, 4),
                                   ),
@@ -1533,6 +1561,8 @@ class _UpdateAssistantScreenState extends State<UpdateAssistantScreen> {
                               ),
                               child: ElevatedButton(
                                 onPressed: () async {
+                                  // Store the context before the async operation
+                                  final outerContext = parentContext;
                                   Navigator.of(dialogContext).pop();
 
                                   // Show loading indicator
@@ -1564,9 +1594,9 @@ class _UpdateAssistantScreenState extends State<UpdateAssistantScreen> {
                                         );
 
                                         // Show success message
-                                        if (context.mounted) {
+                                        if (mounted) {
                                           ScaffoldMessenger.of(
-                                            context,
+                                            outerContext,
                                           ).showSnackBar(
                                             SnackBar(
                                               content: Text(
@@ -1581,13 +1611,16 @@ class _UpdateAssistantScreenState extends State<UpdateAssistantScreen> {
                                         _errorMessage =
                                             'Failed to remove "$knowledgeName" from this assistant. Please try again.';
 
+                                        // Store context reference from outer scope
+                                        final currentContext = outerContext;
+
                                         // Scroll to top to show error message
                                         Future.delayed(
                                           const Duration(milliseconds: 100),
                                           () {
-                                            if (context.mounted) {
+                                            if (mounted) {
                                               Scrollable.ensureVisible(
-                                                context,
+                                                currentContext,
                                                 alignment: 0.0,
                                                 duration: const Duration(
                                                   milliseconds: 600,

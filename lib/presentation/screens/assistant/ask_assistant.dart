@@ -1,10 +1,8 @@
-import 'package:amd_chat_ai/presentation/screens/widgets/chat-ai/prompt_template.dart';
 import 'package:amd_chat_ai/service/chat_service.dart';
 import 'package:amd_chat_ai/service/prompt_service.dart';
 import 'package:flutter/material.dart';
 import '../widgets/chat_message.dart';
 import 'package:amd_chat_ai/presentation/screens/widgets/base_screen.dart';
-import 'package:flutter/services.dart';
 
 class AskAssistantScreen extends StatefulWidget {
   const AskAssistantScreen({super.key});
@@ -18,7 +16,6 @@ class _AskAssistantScreenState extends State<AskAssistantScreen> {
   final TextEditingController _messageController = TextEditingController();
   final FocusNode _messageFocusNode = FocusNode();
   final List<Map<String, dynamic>> _messages = [];
-  bool _showWelcomeMessage = true;
 
   // Chat service
   final ChatAIService _chatService = ChatAIService();
@@ -40,20 +37,6 @@ class _AskAssistantScreenState extends State<AskAssistantScreen> {
   void _onFocusChange() {
     // No longer needed to track keyboard visibility
   }
-
-  // Predefined prompt templates
-  final List<Map<String, dynamic>> _promptTemplates = [
-    {
-      'title': 'AI Poetry Generation',
-      'description': 'Create beautiful poems with AI assistance',
-      'prompt': 'Write a poem about...',
-    },
-    {
-      'title': 'English Vocabulary Learning Flashcard',
-      'description': 'Create flashcards for language learning',
-      'prompt': 'Create flashcards for the word...',
-    },
-  ];
 
   @override
   void didChangeDependencies() {
@@ -153,7 +136,6 @@ class _AskAssistantScreenState extends State<AskAssistantScreen> {
 
       // Add user message to UI immediately
       setState(() {
-        _showWelcomeMessage = false;
         _messages.add({
           'message': message,
           'type': MessageType.user,
@@ -303,21 +285,12 @@ class _AskAssistantScreenState extends State<AskAssistantScreen> {
     setState(() {
       _currentConversationId = null;
       _messages.clear();
-      _showWelcomeMessage = true;
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return PopScope<Object?>(
-      canPop: false,
-      onPopInvokedWithResult: (bool didPop, Object? result) async {
-        if (didPop) return;
-        final shouldPop = await _showExitConfirmationDialog();
-        if (shouldPop && mounted) {
-          SystemNavigator.pop();
-        }
-      },
       child: BaseScreen(
         title: 'Assistant Preview',
         body: Column(
@@ -744,110 +717,5 @@ class _AskAssistantScreenState extends State<AskAssistantScreen> {
         );
       },
     );
-  }
-
-  Future<bool> _showExitConfirmationDialog() async {
-    final result = await showDialog<bool>(
-      context: context,
-      builder:
-          (context) => Dialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            elevation: 8,
-            child: Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                gradient: LinearGradient(
-                  colors: [Colors.blue.shade50, Colors.white],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Icon with animation
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade50,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.exit_to_app_rounded,
-                      color: Colors.red.shade400,
-                      size: 32,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Title
-                  const Text(
-                    'Exit Application',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1A1A2E),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Message
-                  Text(
-                    'Are you sure you want to exit the app?',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Buttons
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Cancel button
-                      OutlinedButton(
-                        onPressed: () => Navigator.of(context).pop(false),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.grey.shade800,
-                          side: BorderSide(color: Colors.grey.shade300),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 12,
-                          ),
-                        ),
-                        child: const Text('Cancel'),
-                      ),
-                      const SizedBox(width: 16),
-
-                      // Exit button
-                      ElevatedButton(
-                        onPressed: () => Navigator.of(context).pop(true),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red.shade500,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 12,
-                          ),
-                        ),
-                        child: const Text('Exit'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-    );
-    return result ?? false;
   }
 }
