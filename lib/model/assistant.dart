@@ -9,6 +9,8 @@ class Assistant {
   final DateTime createdAt;
   final DateTime updatedAt;
   final List<String> permissions;
+  bool? isSelected;
+  String model = 'knowledge-base'; // Default model for all assistants
 
   Assistant({
     required this.id,
@@ -21,6 +23,8 @@ class Assistant {
     required this.createdAt,
     required this.updatedAt,
     required this.permissions,
+    this.isSelected,
+    this.model = 'knowledge-base', // Default model for assistants
   });
 
   factory Assistant.fromJson(Map<String, dynamic> json) {
@@ -31,7 +35,7 @@ class Assistant {
       instructions: json['instructions'] as String,
       userId: json['userId'] as String,
       isDefault: json['isDefault'] as bool,
-      isFavorite: json['isFavorite'] ?? bool,
+      isFavorite: json['isFavorite'] ?? false,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
       permissions:

@@ -59,4 +59,31 @@ class UserService {
       return null;
     }
   }
+
+  Future<Map<String, dynamic>?> getTokenUsage() async {
+    try {
+      final accessToken = await UserStorage.getAccessToken();
+
+      debugPrint('UserService: Fetching token usage');
+
+      final response = await DioClients.jarvisClient.get(
+        '/api/v1/tokens/usage',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $accessToken',
+            'x-jarvis-guid': '',
+          },
+        ),
+      );
+
+      debugPrint('UserService: Token usage fetched successfully');
+
+      return response.data;
+    } on DioException catch (e) {
+      debugPrint(
+        'UserService: Error fetching token usage: ${e.response?.data ?? e.message}',
+      );
+      return null;
+    }
+  }
 }

@@ -107,8 +107,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
       if (!mounted) return;
 
       if (response != null && response.userId.isNotEmpty) {
-        _showCustomSnackBar('Signup successful!', isError: false);
-
         debugPrint('Signup successful! ${response.userId}');
 
         Navigator.pushReplacementNamed(context, '/chat-ai');

@@ -714,7 +714,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
                               ),
                               const SizedBox(height: 16),
                               const Text(
-                                'Failed to load assistants',
+                                ' assistants',
                                 style: TextStyle(
                                   fontSize: 16,
                                   color: Colors.grey,
@@ -864,6 +864,23 @@ class _AssistantScreenState extends State<AssistantScreen> {
                                                   assistant.isFavorite
                                                       ? 'Remove from favorites'
                                                       : 'Add to favorites',
+                                            ),
+                                            // Chat button
+                                            IconButton(
+                                              icon: const Icon(
+                                                Icons.chat_bubble_outline,
+                                                color: Colors.blue,
+                                              ),
+                                              onPressed: () {
+                                                Navigator.of(context).pushNamed(
+                                                  '/chat-ai',
+                                                  arguments: {
+                                                    'assistant': assistant,
+                                                  },
+                                                );
+                                              },
+                                              tooltip:
+                                                  'Chat with this assistant',
                                             ),
                                             // Delete button
                                             IconButton(
