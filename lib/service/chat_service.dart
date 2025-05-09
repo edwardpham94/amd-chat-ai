@@ -2,6 +2,7 @@ import 'package:amd_chat_ai/config/dio_clients.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 class ChatAIService {
   Future<Response?> fetchConversations({
@@ -201,6 +202,170 @@ class ChatAIService {
         return 'Gemini 1.5 Pro';
       default:
         return assistantId;
+    }
+  }
+
+  // Send message with streaming response
+  Stream<Map<String, dynamic>> sendMessageStream({
+    required String content,
+    String? conversationId,
+    required String kbAssistantId,
+  }) async* {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('access_token');
+      final userId = prefs.getString('user_id');
+
+      // Construct request payload
+      final Map<String, dynamic> payload = {'message': content};
+
+      // Add conversation ID if it exists
+      if (conversationId != null) {
+        payload['conversationId'] = conversationId;
+      }
+
+      // Make the request with responseType set to stream
+      final response = await DioClients.kbClient.post(
+        '/kb-core/v1/ai-assistant/$kbAssistantId/ask',
+        data: payload,
+        options: Options(
+          responseType: ResponseType.stream,
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Accept': 'text/event-stream',
+            'Connection': 'keep-alive',
+            'Content-Type': 'application/json',
+            if (userId != null) 'x-jarvis-guid': userId,
+          },
+        ),
+      );
+
+      // Process the stream data
+      String accumulatedContent = '';
+
+      await for (final chunk in response.data.stream) {
+        final String chunkString = String.fromCharCodes(chunk);
+        final List<String> events =
+            chunkString.split('\n\n').where((e) => e.isNotEmpty).toList();
+
+        for (final event in events) {
+          if (event.isEmpty) continue;
+
+          try {
+            // Parse event name and data
+            final eventLines = event.split('\n');
+            String? eventName;
+            String? eventData;
+
+            for (final line in eventLines) {
+              if (line.startsWith('event:')) {
+                eventName = line.substring(6).trim();
+              } else if (line.startsWith('data:')) {
+                eventData = line.substring(5).trim();
+              }
+            }
+
+            if (eventName != null && eventData != null) {
+              // Parse the JSON data
+              final Map<String, dynamic> data = {};
+
+              try {
+                // Parse the JSON data
+                final jsonData = jsonDecode(eventData);
+
+                if (jsonData is Map<String, dynamic>) {
+                  data.addAll(jsonData);
+
+                  // Save the conversation ID if present
+                  if (data['conversationId'] != null) {
+                    data['conversationId'] = data['conversationId'].toString();
+                  }
+                }
+
+                // Handle different event types
+                if (eventName == 'message') {
+                  // Accumulate content
+                  accumulatedContent += data['content'] ?? '';
+
+                  // Return chunk with type and accumulated content
+                  yield {
+                    'type': 'chunk',
+                    'content': data['content'] ?? '',
+                    'accumulatedContent': accumulatedContent,
+                    'conversationId': data['conversationId'],
+                  };
+                } else if (eventName == 'message_end') {
+                  // Return complete message
+                  yield {
+                    'type': 'complete',
+                    'content': accumulatedContent,
+                    'conversationId': data['conversationId'],
+                  };
+                }
+              } catch (e) {
+                debugPrint('Error parsing JSON data: $e');
+                yield {'type': 'error', 'error': 'Error parsing response data'};
+              }
+            }
+          } catch (e) {
+            debugPrint('Error processing event: $e');
+            yield {'type': 'error', 'error': 'Error processing event'};
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Stream error: $e');
+      yield {'type': 'error', 'error': e.toString()};
+    }
+  }
+
+  // Non-streaming message sending (fallback)
+  Future<Map<String, dynamic>> sendMessageNonStreaming({
+    required String content,
+    String? conversationId,
+    required String kbAssistantId,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('access_token');
+      final userId = prefs.getString('user_id');
+
+      // Construct request payload
+      final Map<String, dynamic> payload = {'message': content};
+
+      // Add conversation ID if it exists
+      if (conversationId != null) {
+        payload['conversationId'] = conversationId;
+      }
+
+      // Make the request with standard response
+      final response = await DioClients.kbClient.post(
+        '/kb-core/v1/ai-assistant/$kbAssistantId/ask',
+        data: payload,
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+            if (userId != null) 'x-jarvis-guid': userId,
+          },
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        return {
+          'type': 'success',
+          'content': response.data['answer'] ?? '',
+          'conversationId': response.data['conversationId'],
+        };
+      } else {
+        return {
+          'type': 'error',
+          'error': 'Request failed with status ${response.statusCode}',
+        };
+      }
+    } catch (e) {
+      debugPrint('Non-streaming error: $e');
+      return {'type': 'error', 'error': e.toString()};
     }
   }
 }

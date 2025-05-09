@@ -873,7 +873,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
                                               ),
                                               onPressed: () {
                                                 Navigator.of(context).pushNamed(
-                                                  '/chat-ai',
+                                                  '/ask-assistant',
                                                   arguments: {
                                                     'assistant': assistant,
                                                   },
