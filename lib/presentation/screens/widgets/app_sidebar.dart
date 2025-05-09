@@ -37,6 +37,14 @@ class AppSidebar extends StatelessWidget {
               },
             ),
             ListTile(
+              leading: const Icon(Icons.chat_bubble_outline),
+              title: const Text('Chat AI'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/chat-ai');
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.book),
               title: const Text('Knowledge Base'),
               onTap: () {
@@ -53,7 +61,7 @@ class AppSidebar extends StatelessWidget {
             //   },
             // ),
             ListTile(
-              leading: const Icon(Icons.chat_bubble_outline),
+              leading: const Icon(Icons.lightbulb_outline),
               title: const Text('Prompt'),
               onTap: () {
                 Navigator.pop(context);
@@ -69,19 +77,11 @@ class AppSidebar extends StatelessWidget {
             //   },
             // ),
             ListTile(
-              leading: const Icon(Icons.assistant),
+              leading: const Icon(Icons.smart_toy),
               title: const Text('Assistant'),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.pushNamed(context, '/assistant');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.chat_bubble_outline),
-              title: const Text('Chat AI'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, '/chat-ai');
               },
             ),
             const Divider(),
