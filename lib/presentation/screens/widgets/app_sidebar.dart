@@ -1,4 +1,3 @@
-import 'package:amd_chat_ai/config/user_storage.dart';
 import 'package:amd_chat_ai/service/auth_service.dart';
 import 'package:flutter/material.dart';
 
@@ -31,10 +30,18 @@ class AppSidebar extends StatelessWidget {
             const Divider(),
             ListTile(
               leading: const Icon(Icons.person),
-              title: const Text('Account Settings'),
+              title: const Text('Profile'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.pushNamed(context, '/account-settings');
+                Navigator.pushNamed(context, '/profile');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.chat_bubble_outline),
+              title: const Text('Chat AI'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/chat-ai');
               },
             ),
             ListTile(
@@ -54,7 +61,7 @@ class AppSidebar extends StatelessWidget {
             //   },
             // ),
             ListTile(
-              leading: const Icon(Icons.chat_bubble_outline),
+              leading: const Icon(Icons.lightbulb_outline),
               title: const Text('Prompt'),
               onTap: () {
                 Navigator.pop(context);
@@ -70,19 +77,11 @@ class AppSidebar extends StatelessWidget {
             //   },
             // ),
             ListTile(
-              leading: const Icon(Icons.assistant),
+              leading: const Icon(Icons.smart_toy),
               title: const Text('Assistant'),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.pushNamed(context, '/assistant');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.chat_bubble_outline),
-              title: const Text('Chat AI'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, '/chat-ai');
               },
             ),
             const Divider(),
@@ -96,6 +95,7 @@ class AppSidebar extends StatelessWidget {
               title: const Text('Logout'),
               onTap: () async {
                 await AuthService().logout();
+                if (!context.mounted) return;
                 Navigator.pop(context);
                 Navigator.pushReplacementNamed(context, '/login');
               },

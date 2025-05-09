@@ -419,4 +419,191 @@ class _KnowledgeScreenState extends State<KnowledgeScreen> {
       },
     );
   }
+
+  @override
+  Widget build(BuildContext context) {
+    // Sample data for knowledge items
+    final knowledgeItems = [
+      {
+        'name': 'Wade Warren',
+        'description': 'Travel Bot',
+        'avatarColor': Colors.lightBlue,
+      },
+      {
+        'name': 'Wade Warren',
+        'description': 'Work Bot',
+        'avatarColor': Colors.deepPurple,
+      },
+      {
+        'name': 'Esther Howard',
+        'description': 'Study Bot',
+        'avatarColor': Colors.teal,
+      },
+      {
+        'name': 'Cameron Edw',
+        'description': '24ctm',
+        'avatarColor': Colors.amber,
+      },
+      {
+        'name': 'Robert Fox',
+        'description': 'birhan628@gmail.com',
+        'avatarColor': Colors.brown,
+      },
+    ];
+
+    return BaseScreen(
+      title: 'Knowledge',
+      showBackButton: true,
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        child: Column(
+          children: [
+            // New Knowledge button and search bar row
+            Row(
+              children: [
+                const Expanded(
+                  child: TextField(
+                    decoration: InputDecoration(
+                      hintText: 'Search Knowledge',
+                      prefixIcon: Icon(Icons.search, color: Colors.grey),
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(vertical: 12),
+                      filled: true,
+                      fillColor: Color(0xFFF5F5F5),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(12)),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(12)),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                NewButton(
+                  onTap: () {
+                    Navigator.of(context).pushNamed('/create-knowledge');
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Knowledge count
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16.0),
+              child: Row(
+                children: [
+                  const Text(
+                    '32 Knowledge Available',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Knowledge list
+            Expanded(
+              child: ListView.separated(
+                itemCount: knowledgeItems.length,
+                separatorBuilder:
+                    (context, index) =>
+                        const Divider(height: 1, color: Color(0xFFEEEEEE)),
+                itemBuilder: (context, index) {
+                  final item = knowledgeItems[index];
+                  return Container(
+                    margin: const EdgeInsets.symmetric(vertical: 8.0),
+                    padding: const EdgeInsets.all(16.0),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(
+                            alpha: 0.05 * 2,
+                            red: null,
+                            green: null,
+                            blue: null,
+                          ),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        // Document icon
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: (item['avatarColor'] as Color).withValues(
+                              alpha: 0.1 * 255,
+                              red: null,
+                              green: null,
+                              blue: null,
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(
+                            Icons.description_outlined,
+                            color: item['avatarColor'] as Color,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        // Name and description - with Expanded
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                item['name'].toString(),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                item['description'].toString(),
+                                style: const TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 14,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Delete button
+                        IconButton(
+                          icon: const Icon(
+                            Icons.delete_outline,
+                            color: Colors.red,
+                            size: 22,
+                          ),
+                          onPressed:
+                              () => _showDeleteConfirmation(
+                                context,
+                                item['name'].toString(),
+                              ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

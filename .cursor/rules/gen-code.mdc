@@ -1,0 +1,48 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+1. Gen-Code Rule: Warning-Free and Production-Ready Output
+
+2. When generating any Dart/Flutter code (models, services, widgets, etc.), follow this rule to ensure high-quality, warning-free code that meets project standards.
+
+3. Code Generation Requirements:
+
+4. No Warnings or Errors
+- All generated code must be clean according to:
+  - flutter analyze
+  - Dart/Flutter linter rules (analysis_options.yaml)
+- Fix all warnings/errors automatically, even if caused by the generated code itself.
+
+5. Follow Dart/Flutter Best Practices
+- Use idiomatic Dart.
+- Use late, final, or type annotations as needed.
+- Avoid:
+  - Unused imports
+  - Unused variables/fields
+  - Deprecated methods
+  - Unreachable code
+
+6. Consistent Style
+- Ensure code is formatted using:
+  dart format .
+- Use consistent indentation, naming conventions, and null-safety practices.
+
+7. Ready for Production
+- The generated code must:
+  - Be logically complete (e.g., model includes fromJson/toJson)
+  - Not require further manual lint fixes
+  - Be immediately usable within the project
+
+8. Folder & File Placement
+- Respect project structure (e.g., models/, services/, presentation/)
+- Do not pollute global namespaces
+
+9. If Generating Stateful or UI Code:
+- Use proper widget structure (e.g., StatelessWidget, StatefulWidget).
+- Avoid unnecessary setState calls or rebuilds.
+- Ensure performance best practices are followed (e.g., avoid rebuilding entire trees).
+
+10. Final Check:
+- All generated code must pass flutter analyze with zero issues before being considered valid.

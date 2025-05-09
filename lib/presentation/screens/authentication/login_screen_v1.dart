@@ -15,9 +15,26 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _rememberLogin = false;
-  bool _isPasswordStrong = false;
   bool _obscurePassword = true;
   bool _isSubmitting = false;
+  String? _emailError;
+  String? _passwordError;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Validate initial state of fields
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_emailController.text.isNotEmpty) {
+        _validateEmail(_emailController.text);
+      }
+
+      if (_passwordController.text.isNotEmpty) {
+        _validatePassword(_passwordController.text);
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -26,15 +43,39 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _checkPasswordStrength(String password) {
-    // Simple password strength check
+  bool _isValidEmail(String email) {
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    return emailRegex.hasMatch(email);
+  }
+
+  void _validateEmail(String email) {
+    if (email.isEmpty) {
+      setState(() {
+        _emailError = 'Email is required';
+      });
+    } else if (!_isValidEmail(email)) {
+      setState(() {
+        _emailError = 'Email format invalid';
+      });
+    } else {
+      setState(() {
+        _emailError = null;
+      });
+    }
+  }
+
+  void _validatePassword(String password) {
     setState(() {
-      _isPasswordStrong =
-          password.length >= 8 &&
-          password.contains(RegExp(r'[A-Z]')) &&
-          password.contains(RegExp(r'[0-9]'));
+      _passwordError = password.isEmpty ? 'Password is required' : null;
     });
   }
+
+  bool get _isFormValid =>
+      _emailController.text.isNotEmpty &&
+      _passwordController.text.isNotEmpty &&
+      _isValidEmail(_emailController.text) &&
+      _emailError == null &&
+      _passwordError == null;
 
   Future<SignUpResponse?> login(String email, String password) async {
     try {
@@ -46,7 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
       await UserStorage.saveUserInfo(signInResponse);
       return signInResponse;
     } on DioException catch (e) {
-      print('Signin error: ${e.response?.data ?? e.message}');
+      debugPrint('Signin error: ${e.response?.data ?? e.message}');
       return null;
     }
   }
@@ -56,9 +97,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final password = _passwordController.text.trim();
 
     if (email.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all fields')),
-      );
+      _showCustomSnackBar('Please fill in all fields', isError: true);
       return;
     }
 
@@ -69,25 +108,68 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final response = await login(email, password);
 
+      if (!mounted) return;
+
       if (response != null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Login successful!')));
         Navigator.pushReplacementNamed(context, '/chat-ai');
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invalid email or password')),
-        );
+        _showCustomSnackBar('Invalid email or password', isError: true);
       }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('An error occurred: $e')));
+      if (!mounted) return;
+
+      _showCustomSnackBar('An error occurred: $e', isError: true);
     } finally {
-      setState(() {
-        _isSubmitting = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
     }
+  }
+
+  void _showCustomSnackBar(String message, {required bool isError}) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+    final snackBar = SnackBar(
+      content: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8.0),
+        child: Row(
+          children: [
+            Icon(
+              isError ? Icons.error_outline : Icons.check_circle_outline,
+              color: Colors.white,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      backgroundColor: isError ? Colors.redAccent : const Color(0xFF4CAF50),
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      margin: const EdgeInsets.all(12),
+      elevation: 6,
+      duration: const Duration(seconds: 3),
+      action: SnackBarAction(
+        label: 'DISMISS',
+        textColor: Colors.white,
+        onPressed: () {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        },
+      ),
+    );
+
+    ScaffoldMessenger.of(context).showSnackBar(snackBar);
   }
 
   @override
@@ -127,32 +209,63 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  TextField(
-                    controller: _emailController,
-                    decoration: InputDecoration(
-                      hintText: 'Enter your email',
-                      hintStyle: TextStyle(
-                        color: Colors.grey[400],
-                        fontSize: 14,
+                  Focus(
+                    onFocusChange: (hasFocus) {
+                      if (!hasFocus) {
+                        _validateEmail(_emailController.text.trim());
+                      }
+                    },
+                    child: TextField(
+                      controller: _emailController,
+                      decoration: InputDecoration(
+                        hintText: 'Enter your email',
+                        hintStyle: TextStyle(
+                          color: Colors.grey[400],
+                          fontSize: 14,
+                        ),
+                        prefixIcon: Icon(
+                          Icons.mail_outline,
+                          color: Colors.grey[400],
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey[200]!),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey[200]!),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF6C63FF),
+                          ),
+                        ),
+                        errorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Colors.red),
+                        ),
+                        focusedErrorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Colors.red),
+                        ),
+                        errorText: _emailError,
                       ),
-                      prefixIcon: Icon(
-                        Icons.mail_outline,
-                        color: Colors.grey[400],
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey[200]!),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey[200]!),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFF6C63FF)),
-                      ),
+                      keyboardType: TextInputType.emailAddress,
+                      onChanged: (value) {
+                        if (value.isNotEmpty) {
+                          setState(() {
+                            if (_isValidEmail(value)) {
+                              _emailError = null;
+                            }
+                          });
+                        }
+                      },
+                      onEditingComplete: () {
+                        _validateEmail(_emailController.text.trim());
+                        FocusScope.of(context).nextFocus();
+                      },
                     ),
-                    keyboardType: TextInputType.emailAddress,
                   ),
                 ],
               ),
@@ -169,45 +282,72 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  TextField(
-                    controller: _passwordController,
-                    obscureText: _obscurePassword,
-                    onChanged: _checkPasswordStrength,
-                    decoration: InputDecoration(
-                      hintText: 'Create your password',
-                      hintStyle: TextStyle(
-                        color: Colors.grey[400],
-                        fontSize: 14,
-                      ),
-                      prefixIcon: Icon(
-                        Icons.lock_outline,
-                        color: Colors.grey[400],
-                      ),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscurePassword
-                              ? Icons.visibility_off
-                              : Icons.visibility,
+                  Focus(
+                    onFocusChange: (hasFocus) {
+                      if (!hasFocus) {
+                        _validatePassword(_passwordController.text.trim());
+                      }
+                    },
+                    child: TextField(
+                      controller: _passwordController,
+                      obscureText: _obscurePassword,
+                      decoration: InputDecoration(
+                        hintText: 'Enter your password',
+                        hintStyle: TextStyle(
+                          color: Colors.grey[400],
+                          fontSize: 14,
+                        ),
+                        prefixIcon: Icon(
+                          Icons.lock_outline,
                           color: Colors.grey[400],
                         ),
-                        onPressed: () {
-                          setState(() {
-                            _obscurePassword = !_obscurePassword;
-                          });
-                        },
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                            color: Colors.grey[400],
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            });
+                          },
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey[200]!),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey[200]!),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF6C63FF),
+                          ),
+                        ),
+                        errorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Colors.red),
+                        ),
+                        focusedErrorBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Colors.red),
+                        ),
+                        errorText: _passwordError,
                       ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey[200]!),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey[200]!),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFF6C63FF)),
-                      ),
+                      onChanged: (value) {
+                        setState(() {
+                          _passwordError =
+                              value.isEmpty ? 'Password is required' : null;
+                        });
+                      },
+                      onEditingComplete: () {
+                        _validatePassword(_passwordController.text.trim());
+                        FocusScope.of(context).unfocus();
+                      },
                     ),
                   ),
                 ],
@@ -218,21 +358,23 @@ class _LoginScreenState extends State<LoginScreen> {
                 children: [
                   Row(
                     children: [
-                      Icon(
-                        Icons.check_circle,
-                        size: 16,
-                        color:
-                            _isPasswordStrong ? Colors.green : Colors.grey[400],
+                      Checkbox(
+                        value: _rememberLogin,
+                        onChanged: (value) {
+                          setState(() {
+                            _rememberLogin = value ?? false;
+                          });
+                        },
+                        activeColor: const Color(0xFF6C63FF),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4),
+                        ),
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Strong password',
+                      const Text(
+                        'Remember login info',
                         style: TextStyle(
-                          fontSize: 12,
-                          color:
-                              _isPasswordStrong
-                                  ? Colors.green
-                                  : Colors.grey[600],
+                          fontSize: 14,
+                          color: Color(0xFF666666),
                         ),
                       ),
                     ],
@@ -253,31 +395,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ],
               ),
-              Row(
-                children: [
-                  Checkbox(
-                    value: _rememberLogin,
-                    onChanged: (value) {
-                      setState(() {
-                        _rememberLogin = value ?? false;
-                      });
-                    },
-                    activeColor: const Color(0xFF6C63FF),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                  const Text(
-                    'Remember login info',
-                    style: TextStyle(fontSize: 14, color: Color(0xFF666666)),
-                  ),
-                ],
-              ),
               const SizedBox(height: 24),
               ElevatedButton(
-                onPressed: _isSubmitting ? null : _handleLogin,
+                onPressed:
+                    (_isSubmitting || !_isFormValid) ? null : _handleLogin,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF6C63FF),
+                  disabledBackgroundColor: Colors.grey[300],
                   minimumSize: const Size(double.infinity, 52),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),

@@ -14,11 +14,25 @@ class ChatAIService {
       final token = prefs.getString('access_token');
       final userId = prefs.getString('user_id');
 
+      // Determine model type if assistantId is provided
+      String assistantModel = 'dify'; // Default to dify
+      if (assistantId != null) {
+        // Predefined models start with gpt-, claude-, or gemini-
+        final bool isCustomAssistant =
+            !assistantId.startsWith('gpt-') &&
+            !assistantId.startsWith('claude-') &&
+            !assistantId.startsWith('gemini-');
+        assistantModel = isCustomAssistant ? 'knowledge-base' : 'dify';
+      }
+
       debugPrint('Fetching conversations for user: $userId');
 
       final response = await DioClients.jarvisClient.get(
         '/api/v1/ai-chat/conversations',
-        queryParameters: {'assistantModel': 'dify'},
+        queryParameters: {
+          'assistantModel': assistantModel,
+          if (assistantId != null) 'assistantId': assistantId,
+        },
         options: Options(
           headers: {
             'Authorization': 'Bearer $token',
@@ -48,12 +62,24 @@ class ChatAIService {
       final token = prefs.getString('access_token');
       final userId = prefs.getString('user_id');
 
+      // Determine model type if assistantId is provided
+      String assistantModel = 'dify';
+      if (assistantId != null) {
+        // Predefined models start with gpt-, claude-, or gemini-
+        final bool isCustomAssistant =
+            !assistantId.startsWith('gpt-') &&
+            !assistantId.startsWith('claude-') &&
+            !assistantId.startsWith('gemini-');
+        assistantModel = isCustomAssistant ? 'knowledge-base' : 'dify';
+      }
+
       debugPrint('Fetching messages for conversation: $conversationId');
 
       final response = await DioClients.jarvisClient.get(
-        '/api/v1/ai-chat/conversations/$conversationId/messages',
+        '/api/v1/ai-chat/conversations/$conversationId/messages/',
         queryParameters: {
-          'assistantModel': 'dify', // Required
+          'assistantModel': assistantModel,
+          if (assistantId != null) 'assistantId': assistantId,
         },
         options: Options(
           headers: {
@@ -86,13 +112,21 @@ class ChatAIService {
       final token = prefs.getString('access_token');
       final userId = prefs.getString('user_id');
 
+      // Determine whether this is a predefined model or custom assistant
+      // Predefined models contain a hyphen, custom assistant IDs are typically UUIDs without hyphens
+      final bool isCustomAssistant =
+          !assistantId.startsWith('gpt-') &&
+          !assistantId.startsWith('claude-') &&
+          !assistantId.startsWith('gemini-');
+      final String modelType = isCustomAssistant ? 'knowledge-base' : 'dify';
+
       // Prepare the request data
       final Map<String, dynamic> requestData = {
         'content': content,
         'files': files,
         'assistant': {
           'id': assistantId,
-          'model': 'dify',
+          'model': modelType,
           'name': _getAssistantName(assistantId),
         },
       };
@@ -156,7 +190,7 @@ class ChatAIService {
       case 'gpt-4o':
         return 'GPT-4o';
       case 'gpt-4o-mini':
-        return 'GPT-4o Mini';
+        return 'GPT-4o mini';
       case 'claude-3-haiku-20240307':
         return 'Claude 3 Haiku';
       case 'claude-3-5-sonnet-20240620':
