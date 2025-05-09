@@ -10,6 +10,7 @@ import 'package:amd_chat_ai/service/user_service.dart';
 import 'package:flutter/material.dart';
 import '../widgets/chat_message.dart';
 import 'package:amd_chat_ai/presentation/screens/widgets/base_screen.dart';
+import 'package:flutter/services.dart';
 
 class ChatAIScreen extends StatefulWidget {
   const ChatAIScreen({super.key});
@@ -1113,125 +1114,136 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BaseScreen(
-      title: 'Chat AI',
-      body: Column(
-        children: [
-          // Model selector and conversation indicator
-          // Only show this when keyboard is not visible to save layout computation
-          if (!_isKeyboardVisible)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  // Current conversation indicator
-                  if (_currentConversationId != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.blue.shade200),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.chat,
-                            size: 16,
-                            color: Colors.blue.shade700,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'In conversation',
-                            style: TextStyle(
-                              color: Colors.blue.shade700,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  const Spacer(),
-                  // Model selector
-                  Center(
-                    child: TextButton(
-                      onPressed: _showModelSelectionDialog,
-                      style: TextButton.styleFrom(
+    return PopScope<Object?>(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, Object? result) async {
+        if (didPop) return;
+        final shouldPop = await _showExitConfirmationDialog();
+        if (shouldPop && mounted) {
+          SystemNavigator.pop();
+        }
+      },
+      child: BaseScreen(
+        title: 'Chat AI',
+        isChatScreen: true,
+        body: Column(
+          children: [
+            // Model selector and conversation indicator
+            // Only show this when keyboard is not visible to save layout computation
+            if (!_isKeyboardVisible)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    // Current conversation indicator
+                    if (_currentConversationId != null)
+                      Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
                           vertical: 6,
                         ),
-                        backgroundColor: Colors.grey.shade50,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          side: BorderSide(color: Colors.grey.shade300),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.blue.shade200),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.chat,
+                              size: 16,
+                              color: Colors.blue.shade700,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'In conversation',
+                              style: TextStyle(
+                                color: Colors.blue.shade700,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Icon based on model type
-                          Icon(
-                            _selectedModel.startsWith('gpt-')
-                                ? Icons.auto_awesome
-                                : _selectedModel.startsWith('claude-')
-                                ? Icons.psychology
-                                : _selectedModel.startsWith('gemini-')
-                                ? Icons.brightness_auto
-                                : Icons.assistant,
-                            size: 16,
-                            color:
-                                _selectedModel.startsWith('gpt-')
-                                    ? Colors.green.shade700
-                                    : _selectedModel.startsWith('claude-')
-                                    ? Colors.purple.shade700
-                                    : _selectedModel.startsWith('gemini-')
-                                    ? Colors.blue.shade700
-                                    : Colors.orange.shade700,
+                    const Spacer(),
+                    // Model selector
+                    Center(
+                      child: TextButton(
+                        onPressed: _showModelSelectionDialog,
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
                           ),
-                          const SizedBox(width: 6),
-                          ConstrainedBox(
-                            constraints: BoxConstraints(
-                              maxWidth:
-                                  MediaQuery.of(context).size.width * 0.36,
+                          backgroundColor: Colors.grey.shade50,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            side: BorderSide(color: Colors.grey.shade300),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Icon based on model type
+                            Icon(
+                              _selectedModel.startsWith('gpt-')
+                                  ? Icons.auto_awesome
+                                  : _selectedModel.startsWith('claude-')
+                                  ? Icons.psychology
+                                  : _selectedModel.startsWith('gemini-')
+                                  ? Icons.brightness_auto
+                                  : Icons.assistant,
+                              size: 16,
+                              color:
+                                  _selectedModel.startsWith('gpt-')
+                                      ? Colors.green.shade700
+                                      : _selectedModel.startsWith('claude-')
+                                      ? Colors.purple.shade700
+                                      : _selectedModel.startsWith('gemini-')
+                                      ? Colors.blue.shade700
+                                      : Colors.orange.shade700,
                             ),
-                            child: Text(
-                              _selectedModelName,
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.grey.shade800,
+                            const SizedBox(width: 6),
+                            ConstrainedBox(
+                              constraints: BoxConstraints(
+                                maxWidth:
+                                    MediaQuery.of(context).size.width * 0.36,
                               ),
-                              overflow: TextOverflow.ellipsis,
+                              child: Text(
+                                _selectedModelName,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.grey.shade800,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 2),
-                          Icon(
-                            Icons.arrow_drop_down,
-                            color: Colors.grey.shade700,
-                            size: 18,
-                          ),
-                        ],
+                            const SizedBox(width: 2),
+                            Icon(
+                              Icons.arrow_drop_down,
+                              color: Colors.grey.shade700,
+                              size: 18,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+            // Existing chat content
+            Expanded(
+              child:
+                  _showWelcomeMessage
+                      ? _buildWelcomeMessage()
+                      : _buildChatMessages(),
             ),
-          // Existing chat content
-          Expanded(
-            child:
-                _showWelcomeMessage
-                    ? _buildWelcomeMessage()
-                    : _buildChatMessages(),
-          ),
-          _buildChatInput(),
-        ],
+            _buildChatInput(),
+          ],
+        ),
       ),
     );
   }
@@ -1740,5 +1752,110 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
         _pendingAssistantId = assistantId;
       }
     });
+  }
+
+  Future<bool> _showExitConfirmationDialog() async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            elevation: 8,
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                gradient: LinearGradient(
+                  colors: [Colors.blue.shade50, Colors.white],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Icon with animation
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.exit_to_app_rounded,
+                      color: Colors.red.shade400,
+                      size: 32,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Title
+                  const Text(
+                    'Exit Application',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1A1A2E),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Message
+                  Text(
+                    'Are you sure you want to exit the app?',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Buttons
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Cancel button
+                      OutlinedButton(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.grey.shade800,
+                          side: BorderSide(color: Colors.grey.shade300),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 12,
+                          ),
+                        ),
+                        child: const Text('Cancel'),
+                      ),
+                      const SizedBox(width: 16),
+
+                      // Exit button
+                      ElevatedButton(
+                        onPressed: () => Navigator.of(context).pop(true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red.shade500,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 12,
+                          ),
+                        ),
+                        child: const Text('Exit'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+    );
+    return result ?? false;
   }
 }
