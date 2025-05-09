@@ -337,8 +337,6 @@ class _CreateAssistantScreenState extends State<CreateAssistantScreen> {
                                 ),
                                 onDeleted: () {
                                   setState(() {
-                                    final idToRemove =
-                                        _selectedKnowledgeIds[index];
                                     _selectedKnowledgeIds.removeAt(index);
                                     _selectedKnowledgeNames.removeAt(index);
                                   });
