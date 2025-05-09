@@ -1,3 +1,6 @@
+import 'package:amd_chat_ai/service/knowledge_service.dart';
+import 'package:dio/dio.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:amd_chat_ai/presentation/screens/widgets/base_screen.dart';
@@ -17,9 +20,13 @@ class _CreateKnowledgeScreenState extends State<CreateKnowledgeScreen>
   final _descriptionController = TextEditingController();
   String? _selectedSource;
   late AnimationController _animationController;
+  final KnowledgeService _knowledgeService = KnowledgeService();
+  bool _isLoading = false;
 
   Map<String, dynamic>? _selectedFile;
   String? _selectedWebsiteUrl;
+  String? _selectedWebsiteName;
+  String? _knowledgeId;
 
   @override
   void initState() {
@@ -29,6 +36,14 @@ class _CreateKnowledgeScreenState extends State<CreateKnowledgeScreen>
       vsync: this,
     );
     _animationController.forward();
+
+    // Retrieve the ID from the arguments and fetch knowledge details if editing
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final args = ModalRoute.of(context)?.settings.arguments as String?;
+      if (args != null) {
+        _knowledgeId = args;
+      }
+    });
   }
 
   @override
@@ -37,6 +52,125 @@ class _CreateKnowledgeScreenState extends State<CreateKnowledgeScreen>
     _descriptionController.dispose();
     _animationController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleCreateKnowledge() async {
+    if (_nameController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a knowledge name')),
+      );
+      return;
+    }
+
+    if (_descriptionController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a description')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Call the createKnowledge function
+      final knowledge = await _knowledgeService.createKnowledge(
+        knowledgeName: _nameController.text.trim(),
+        description: _descriptionController.text.trim(),
+      );
+
+      if (knowledge != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Knowledge "${knowledge.knowledgeName}" created successfully!',
+            ),
+          ),
+        );
+
+        // Get the ID of the created knowledge
+        final String knowledgeId = knowledge.id ?? '';
+
+        print(
+          'Knowledge ID: $knowledgeId'
+          'file: ${_selectedFile}',
+        );
+
+        if (_selectedFile != null && _selectedFile!['path'] != null) {
+          // Upload the local file
+          print('>>>>>>>>>>>>>>>>>> Uploading file: ${_selectedFile!['path']}');
+          final String filePath = _selectedFile!['path'];
+          final success = await _knowledgeService.uploadLocalFile(
+            id: knowledgeId,
+            filePath: filePath,
+          );
+
+          if (success) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('File uploaded successfully!')),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Failed to upload file. Please try again.'),
+              ),
+            );
+          }
+        }
+
+        if (_selectedWebsiteUrl != null) {
+          print(
+            'Selected website URL: $_selectedWebsiteName $_selectedWebsiteUrl ',
+          );
+          final success = await _knowledgeService.uploadFromWebsite(
+            id: knowledgeId,
+            webUrl: _selectedWebsiteUrl!,
+            unitName: _selectedWebsiteName!,
+          );
+
+          if (success) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Attached website successfully!')),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Failed to upload website. Please try again.'),
+              ),
+            );
+          }
+        }
+
+        Navigator.pop(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to create knowledge. Please try again.'),
+          ),
+        );
+      }
+    } on DioException catch (e) {
+      debugPrint('Error creating knowledge: ${e.response?.data ?? e.message}');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Error: ${e.response?.data['message'] ?? 'An unexpected error occurred.'}',
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Unexpected error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('An unexpected error occurred. Please try again.'),
+        ),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -70,7 +204,7 @@ class _CreateKnowledgeScreenState extends State<CreateKnowledgeScreen>
     ];
 
     return BaseScreen(
-      title: 'Create Knowledge',
+      title: _knowledgeId == null ? 'Create Knowledge' : 'Edit Knowledge',
       showBackButton: true,
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
@@ -156,20 +290,15 @@ class _CreateKnowledgeScreenState extends State<CreateKnowledgeScreen>
               const SizedBox(height: 48),
 
               // Create Button
-              PrimaryButton(
-                label: 'Create Knowledge',
-                onPressed: () {
-                  // Handle create knowledge logic
-                  final knowledge = {
-                    'name': _nameController.text,
-                    'description': _descriptionController.text,
-                    'source': _selectedSource,
-                  };
-
-                  debugPrint('Created knowledge: $knowledge');
-                  Navigator.pop(context);
-                },
-              ),
+              _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : PrimaryButton(
+                    label:
+                        _knowledgeId == null
+                            ? 'Create Knowledge'
+                            : 'Update Knowledge',
+                    onPressed: _handleCreateKnowledge,
+                  ),
 
               const SizedBox(height: 24),
             ],
@@ -180,20 +309,26 @@ class _CreateKnowledgeScreenState extends State<CreateKnowledgeScreen>
   }
 
   // Update the file upload dialog
-  void _showFileUploadDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return FilePickerDialog(
-          onFileSelected: (fileData) {
-            setState(() {
-              _selectedFile = fileData;
-              _selectedSource = 'Local files';
-            });
-          },
-        );
-      },
-    );
+void _showFileUploadDialog(BuildContext context) async {
+    final result = await FilePicker.platform.pickFiles();
+
+    if (result != null && result.files.single.path != null) {
+      setState(() {
+        _selectedFile = {
+          'name': result.files.single.name,
+          'size': '${(result.files.single.size / 1024).toStringAsFixed(2)} KB',
+          'progress': 100,
+          'icon': Icons.insert_drive_file,
+          'path': result.files.single.path, // Add the file path here
+        };
+        _selectedSource = 'Local files';
+      });
+    } else {
+      // User canceled the picker
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('No file selected')));
+    }
   }
 
   // Add this widget to display selected file
@@ -483,6 +618,8 @@ class _CreateKnowledgeScreenState extends State<CreateKnowledgeScreen>
   // Also update the website dialog to fix potential overflow
   void _showWebsiteDialog(BuildContext context) {
     final linkController = TextEditingController();
+    final nameController =
+        TextEditingController(); // Controller for website name
 
     bool isValidUrl(String url) {
       try {
@@ -543,6 +680,19 @@ class _CreateKnowledgeScreenState extends State<CreateKnowledgeScreen>
                     ),
                     const SizedBox(height: 24),
 
+                    // Website name input field
+                    TextField(
+                      controller: nameController,
+                      decoration: InputDecoration(
+                        labelText: 'Website Name',
+                        hintText: 'Enter website name',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
                     // Link input field
                     TextField(
                       controller: linkController,
@@ -575,6 +725,7 @@ class _CreateKnowledgeScreenState extends State<CreateKnowledgeScreen>
                                   setState(() {
                                     _selectedSource = 'Website';
                                     _selectedWebsiteUrl = linkController.text;
+                                    _selectedWebsiteName = nameController.text; 
                                   });
                                   Navigator.pop(context);
                                 }
