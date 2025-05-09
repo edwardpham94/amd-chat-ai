@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:amd_chat_ai/model/assistant.dart';
+import 'package:amd_chat_ai/model/knowledge.dart';
 import 'package:amd_chat_ai/presentation/screens/widgets/base_screen.dart';
 import 'package:amd_chat_ai/service/assistant_service.dart';
+import 'package:amd_chat_ai/service/knowledge_service.dart';
 
 class UpdateAssistantScreen extends StatefulWidget {
   const UpdateAssistantScreen({super.key});
@@ -14,27 +16,24 @@ class _UpdateAssistantScreenState extends State<UpdateAssistantScreen> {
   final _nameController = TextEditingController();
   final _instructionsController = TextEditingController();
   final _descriptionController = TextEditingController();
-  String? _selectedKnowledge;
+
+  // Multi-select knowledge bases
+  List<String> _selectedKnowledgeNames = [];
+  List<String> _selectedKnowledgeIds = [];
+
   bool _isLoading = false;
+  bool _isLoadingKnowledges = true;
   String? _errorMessage;
 
   // For API integration
   final AssistantService _assistantService = AssistantService();
+  final KnowledgeService _knowledgeService = KnowledgeService();
   Assistant? _assistant;
   String? _assistantId;
 
-  // Sample knowledge data - Replace with your actual knowledge list
-  final List<String> _knowledgeList = [
-    'Company Policy Knowledge',
-    'Product Documentation',
-    'Customer Support FAQ',
-    'Technical Documentation',
-    'HR Guidelines',
-    'Marketing Materials',
-    'Sales Playbooks',
-    'Industry Research',
-    'Competitor Analysis',
-  ];
+  // Knowledge data from API
+  List<Knowledge> _knowledgeList = [];
+  List<Knowledge> _assistantKnowledges = [];
 
   @override
   void didChangeDependencies() {
@@ -47,10 +46,61 @@ class _UpdateAssistantScreenState extends State<UpdateAssistantScreen> {
         _assistant = args;
         _assistantId = _assistant?.id;
         _initializeFormFields();
+        _fetchAssistantKnowledges();
       } else if (args is Map<String, dynamic>) {
         _assistantId = args['id'] as String?;
         _initializeFormFieldsFromMap(args);
+        if (_assistantId != null) {
+          _fetchAssistantKnowledges();
+        }
       }
+    }
+  }
+
+  Future<void> _fetchAssistantKnowledges() async {
+    if (_assistantId == null) return;
+
+    setState(() {
+      _isLoadingKnowledges = true;
+    });
+
+    try {
+      // Fetch all available knowledge bases
+      final knowledgeResponse = await _knowledgeService.getKnowledges(
+        limit: 50, // Get a reasonable number of knowledge bases
+      );
+
+      // Fetch knowledge bases associated with this assistant
+      final assistantKnowledgesResponse = await _assistantService
+          .getAssistantKnowledges(assistantId: _assistantId!, limit: 50);
+
+      setState(() {
+        _isLoadingKnowledges = false;
+
+        // Set available knowledge bases
+        if (knowledgeResponse != null) {
+          _knowledgeList = knowledgeResponse.data;
+        }
+
+        // Set knowledge bases associated with this assistant
+        if (assistantKnowledgesResponse != null) {
+          _assistantKnowledges = assistantKnowledgesResponse.data;
+
+          // Pre-select the assistant's knowledge bases
+          _selectedKnowledgeIds =
+              _assistantKnowledges.map((knowledge) => knowledge.id!).toList();
+
+          _selectedKnowledgeNames =
+              _assistantKnowledges
+                  .map((knowledge) => knowledge.knowledgeName)
+                  .toList();
+        }
+      });
+    } catch (e) {
+      setState(() {
+        _isLoadingKnowledges = false;
+        _errorMessage = 'Failed to load knowledge bases: $e';
+      });
     }
   }
 
@@ -66,16 +116,6 @@ class _UpdateAssistantScreenState extends State<UpdateAssistantScreen> {
     _nameController.text = data['assistantName'] as String? ?? '';
     _instructionsController.text = data['instructions'] as String? ?? '';
     _descriptionController.text = data['description'] as String? ?? '';
-
-    // Optional: If the knowledge base is passed in the data
-    if (data.containsKey('knowledge')) {
-      final knowledge = data['knowledge'] as String?;
-      if (knowledge != null && _knowledgeList.contains(knowledge)) {
-        setState(() {
-          _selectedKnowledge = knowledge;
-        });
-      }
-    }
   }
 
   @override
@@ -109,6 +149,7 @@ class _UpdateAssistantScreenState extends State<UpdateAssistantScreen> {
     });
 
     try {
+      // Update only the assistant's basic information
       final updatedAssistant = await _assistantService.updateAssistant(
         assistantId: _assistantId!,
         assistantName: _nameController.text.trim(),
@@ -122,16 +163,13 @@ class _UpdateAssistantScreenState extends State<UpdateAssistantScreen> {
 
       if (updatedAssistant != null) {
         if (mounted) {
-          // Log all data including knowledge field (even though it's not used in API)
-          debugPrint(
-            'Updated Assistant: ${_nameController.text} with knowledge: $_selectedKnowledge',
-          );
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Assistant updated successfully')),
           );
           Navigator.of(context).pop(true); // Return true to indicate success
         }
       } else {
+        // Assistant update failed
         setState(() {
           _errorMessage = 'Failed to update assistant. Please try again.';
         });
@@ -207,214 +245,114 @@ class _UpdateAssistantScreenState extends State<UpdateAssistantScreen> {
               const SizedBox(height: 24),
 
               // Knowledge Selection with Searchable Dropdown
-              _buildSectionTitle('Knowledge Base'),
-              AnimatedCrossFade(
-                duration: const Duration(milliseconds: 300),
-                crossFadeState:
-                    _selectedKnowledge == null
-                        ? CrossFadeState.showFirst
-                        : CrossFadeState.showSecond,
-                firstChild: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: Colors.grey.withAlpha(51),
-                      width: 1,
+              _buildSectionTitle('Knowledge Base (Multi-Select)'),
+              _isLoadingKnowledges
+                  ? const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: CircularProgressIndicator(),
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withAlpha(13),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: SearchableDropdown(
-                    items:
-                        _knowledgeList.map((String item) {
-                          return DropdownMenuItem<String>(
-                            value: item,
-                            child: Text(
-                              item,
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                            ),
-                          );
-                        }).toList(),
-                    value: _selectedKnowledge,
-                    hint: LayoutBuilder(
-                      builder: (context, constraints) {
-                        // For extremely narrow widths, show only the icon
-                        if (constraints.maxWidth < 100) {
-                          return const Icon(
-                            Icons.library_books_outlined,
-                            color: Color(0xFF3B5998),
-                            size: 20,
-                          );
-                        }
-
-                        // For normal widths, show the full row
-                        return const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.library_books_outlined,
-                              color: Color(0xFF3B5998),
-                              size: 20,
-                            ),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Select Knowledge Base',
-                                style: TextStyle(
-                                  color: Colors.black54,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w400,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 1,
-                              ),
+                  )
+                  : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: Colors.grey.withAlpha(51),
+                            width: 1,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withAlpha(13),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
                             ),
                           ],
-                        );
-                      },
-                    ),
-                    searchHint: 'Search Knowledge Base',
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedKnowledge = value;
-                      });
-                    },
-                    isExpanded: true,
-                    dialogBox: true,
-                    menuConstraints: BoxConstraints.tight(
-                      const Size.fromHeight(350),
-                    ),
-                    closeButton: 'Close',
-                    displayClearIcon: true,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: Colors.black87,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    underline: Container(height: 0, color: Colors.transparent),
-                    icon: Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      color: const Color(0xFF3B5998).withAlpha(77),
-                      size: 28,
-                    ),
-                    iconSize: 24,
-                    iconEnabledColor: const Color(0xFF3B5998),
-                    iconDisabledColor: Colors.grey,
-                  ),
-                ),
-                secondChild: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF3B5998).withAlpha(5),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: const Color(0xFF3B5998).withAlpha(10),
-                      width: 1,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withAlpha(13),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
+                        ),
+                        child: InkWell(
+                          onTap: () {
+                            _showMultiSelectDialog(context);
+                          },
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.library_books_outlined,
+                                color: Color(0xFF3B5998),
+                                size: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  _selectedKnowledgeNames.isEmpty
+                                      ? 'Select Knowledge Bases'
+                                      : '${_selectedKnowledgeNames.length} Knowledge Base(s) Selected',
+                                  style: TextStyle(
+                                    color:
+                                        _selectedKnowledgeNames.isEmpty
+                                            ? Colors.black54
+                                            : Colors.black87,
+                                    fontSize: 16,
+                                    fontWeight:
+                                        _selectedKnowledgeNames.isEmpty
+                                            ? FontWeight.w400
+                                            : FontWeight.w500,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                color: const Color(0xFF3B5998).withAlpha(77),
+                                size: 28,
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
+                      if (_selectedKnowledgeNames.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 16),
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: List.generate(
+                              _selectedKnowledgeNames.length,
+                              (index) => Chip(
+                                label: Text(
+                                  _selectedKnowledgeNames[index],
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                backgroundColor: const Color(0xFF3B5998),
+                                deleteIcon: const Icon(
+                                  Icons.close,
+                                  size: 18,
+                                  color: Colors.white,
+                                ),
+                                onDeleted: () {
+                                  // Show confirmation dialog before removing the knowledge base
+                                  _showDeleteConfirmationDialog(
+                                    context,
+                                    _selectedKnowledgeIds[index],
+                                    _selectedKnowledgeNames[index],
+                                    index,
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      // For extremely narrow widths, show only the icon
-                      if (constraints.maxWidth < 100) {
-                        return Center(
-                          child: IconButton(
-                            onPressed: () {
-                              setState(() {
-                                _selectedKnowledge = null;
-                              });
-                            },
-                            icon: const Icon(
-                              Icons.library_books_rounded,
-                              color: Color(0xFF3B5998),
-                              size: 24,
-                            ),
-                            padding: EdgeInsets.zero,
-                          ),
-                        );
-                      }
-
-                      // For normal widths, show the full row
-                      return Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF3B5998).withAlpha(5),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(
-                              Icons.library_books_rounded,
-                              color: Color(0xFF3B5998),
-                              size: 24,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Text(
-                                  'Selected Knowledge Base',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Color(0xFF3B5998),
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  _selectedKnowledge ?? '',
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.black87,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ),
-                          ),
-                          IconButton(
-                            onPressed: () {
-                              setState(() {
-                                _selectedKnowledge = null;
-                              });
-                            },
-                            icon: const Icon(
-                              Icons.close_rounded,
-                              color: Colors.black54,
-                              size: 20,
-                            ),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ),
-              ),
 
               const SizedBox(height: 48),
 
@@ -444,10 +382,10 @@ class _UpdateAssistantScreenState extends State<UpdateAssistantScreen> {
                         : ElevatedButton(
                           onPressed: _updateAssistant,
                           style: ElevatedButton.styleFrom(
-                            foregroundColor: Colors.white,
                             backgroundColor: const Color(0xFF415DF2),
+                            foregroundColor: Colors.white,
                             elevation: 0,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shadowColor: Colors.transparent,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
                             ),
@@ -455,9 +393,8 @@ class _UpdateAssistantScreenState extends State<UpdateAssistantScreen> {
                           child: const Text(
                             'Update Assistant',
                             style: TextStyle(
-                              fontSize: 18,
+                              fontSize: 16,
                               fontWeight: FontWeight.w600,
-                              letterSpacing: 0.5,
                             ),
                           ),
                         ),
@@ -533,315 +470,1169 @@ class _UpdateAssistantScreenState extends State<UpdateAssistantScreen> {
       ),
     );
   }
-}
 
-class SearchableDropdown extends StatelessWidget {
-  final List<DropdownMenuItem<String>> items;
-  final String? value;
-  final Widget hint;
-  final String searchHint;
-  final ValueChanged<String?> onChanged;
-  final bool isExpanded;
-  final bool dialogBox;
-  final BoxConstraints menuConstraints;
-  final String closeButton;
-  final bool displayClearIcon;
-  final TextStyle style;
-  final Widget underline;
-  final Widget icon;
-  final double iconSize;
-  final Color iconEnabledColor;
-  final Color iconDisabledColor;
+  // Add multi-select dialog method
+  Future<void> _showMultiSelectDialog(BuildContext context) async {
+    final List<String> tempSelectedIds = List.from(_selectedKnowledgeIds);
+    // Keep track of initial selection to check what was removed later
+    final Set<String> initialSelectedIds = Set.from(_selectedKnowledgeIds);
 
-  const SearchableDropdown({
-    super.key,
-    required this.items,
-    this.value,
-    required this.hint,
-    required this.searchHint,
-    required this.onChanged,
-    this.isExpanded = false,
-    this.dialogBox = false,
-    required this.menuConstraints,
-    required this.closeButton,
-    this.displayClearIcon = false,
-    required this.style,
-    required this.underline,
-    required this.icon,
-    required this.iconSize,
-    required this.iconEnabledColor,
-    required this.iconDisabledColor,
-  });
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+              child: Container(
+                width: MediaQuery.of(context).size.width * 0.9,
+                constraints: BoxConstraints(
+                  maxWidth: 400,
+                  maxHeight: MediaQuery.of(context).size.height * 0.8,
+                ),
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withAlpha(13),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Header
+                    const Text(
+                      'Select Knowledge Bases',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF3B5998),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: InkWell(
-        onTap: () {
-          // Show search dialog
-          showDialog(
-            context: context,
-            builder: (BuildContext context) {
-              return SearchDialog(
-                items: items,
-                searchHint: searchHint,
-                closeButton: closeButton,
-                onSelected: (selectedValue) {
-                  onChanged(selectedValue);
-                  Navigator.of(context).pop();
-                },
-              );
-            },
-          );
-        },
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            // For extremely narrow widths, show only the icon
-            if (constraints.maxWidth < 100) {
-              return Center(child: icon);
-            }
-
-            // For normal widths, show the full row
-            return Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Expanded(
-                  child:
-                      value == null
-                          ? hint
-                          : Text(
-                            value!,
-                            style: style,
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
+                    // Search Field
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: TextField(
+                        decoration: InputDecoration(
+                          hintText: 'Search Knowledge Bases',
+                          hintStyle: TextStyle(color: Colors.grey[400]),
+                          prefixIcon: const Icon(
+                            Icons.search,
+                            color: Color(0xFF3B5998),
                           ),
-                ),
-                const SizedBox(width: 4),
-                icon,
-              ],
-            );
-          },
-        ),
-      ),
-    );
-  }
-}
-
-class SearchDialog extends StatefulWidget {
-  final List<DropdownMenuItem<String>> items;
-  final String searchHint;
-  final String closeButton;
-  final Function(String?) onSelected;
-
-  const SearchDialog({
-    super.key,
-    required this.items,
-    required this.searchHint,
-    required this.closeButton,
-    required this.onSelected,
-  });
-
-  @override
-  SearchDialogState createState() => SearchDialogState();
-}
-
-class SearchDialogState extends State<SearchDialog> {
-  final TextEditingController _searchController = TextEditingController();
-  List<DropdownMenuItem<String>> _filteredItems = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _filteredItems = List.from(widget.items);
-    _searchController.addListener(_filterItems);
-  }
-
-  void _filterItems() {
-    final query = _searchController.text.toLowerCase();
-    setState(() {
-      if (query.isEmpty) {
-        _filteredItems = List.from(widget.items);
-      } else {
-        _filteredItems =
-            widget.items
-                .where(
-                  (item) =>
-                      (item.value?.toLowerCase().contains(query) ?? false),
-                )
-                .toList();
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      elevation: 0,
-      backgroundColor: Colors.transparent,
-      child: Container(
-        width: MediaQuery.of(context).size.width * 0.9,
-        constraints: BoxConstraints(
-          maxWidth: 400,
-          maxHeight: MediaQuery.of(context).size.height * 0.8,
-        ),
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha(13),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Header
-            const Text(
-              'Select Knowledge Base',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF3B5998),
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-
-            // Search Field
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: widget.searchHint,
-                  hintStyle: TextStyle(color: Colors.grey[400]),
-                  prefixIcon: const Icon(
-                    Icons.search,
-                    color: Color(0xFF3B5998),
-                  ),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // List of Items
-            Flexible(
-              child:
-                  _filteredItems.isEmpty
-                      ? Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.search_off_rounded,
-                              size: 48,
-                              color: Colors.grey[400],
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'No results found',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 16,
-                              ),
-                            ),
-                          ],
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
                         ),
-                      )
-                      : ListView.builder(
+                        onChanged: (value) {
+                          // Filter functionality could be added here
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // List of Knowledge Bases with checkboxes
+                    Flexible(
+                      child: ListView.builder(
                         shrinkWrap: true,
-                        itemCount: _filteredItems.length,
+                        itemCount: _knowledgeList.length,
                         itemBuilder: (context, index) {
-                          return Container(
-                            margin: const EdgeInsets.symmetric(vertical: 4),
-                            child: InkWell(
-                              onTap: () {
-                                widget.onSelected(_filteredItems[index].value);
-                              },
-                              borderRadius: BorderRadius.circular(12),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 12,
-                                ),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(12),
-                                  color: Colors.grey[50],
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(
-                                      Icons.library_books_outlined,
-                                      color: Color(0xFF3B5998),
-                                      size: 20,
+                          final knowledge = _knowledgeList[index];
+                          final isSelected = tempSelectedIds.contains(
+                            knowledge.id,
+                          );
+                          // Check if this is a pre-selected knowledge from assistant
+                          final isPreviouslySelected = initialSelectedIds
+                              .contains(knowledge.id);
+
+                          return CheckboxListTile(
+                            value: isSelected,
+                            onChanged: (bool? value) {
+                              setState(() {
+                                if (value == true) {
+                                  if (!tempSelectedIds.contains(knowledge.id)) {
+                                    tempSelectedIds.add(knowledge.id!);
+                                  }
+                                } else {
+                                  tempSelectedIds.remove(knowledge.id);
+                                }
+                              });
+                            },
+                            title: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    knowledge.knowledgeName,
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
                                     ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: DefaultTextStyle(
-                                        style: const TextStyle(
-                                          color: Colors.black87,
-                                          fontSize: 16,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                        child: _filteredItems[index].child,
+                                  ),
+                                ),
+                                if (isPreviouslySelected)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(
+                                        0xFF3B5998,
+                                      ).withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: const Text(
+                                      'Current',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Color(0xFF3B5998),
+                                        fontWeight: FontWeight.w500,
                                       ),
                                     ),
-                                  ],
-                                ),
+                                  ),
+                              ],
+                            ),
+                            subtitle: Text(
+                              knowledge.description,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[600],
                               ),
+                            ),
+                            activeColor: const Color(0xFF3B5998),
+                            checkColor: Colors.white,
+                            controlAffinity: ListTileControlAffinity.leading,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
                             ),
                           );
                         },
                       ),
-            ),
-            const SizedBox(height: 16),
-
-            // Close Button
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  style: TextButton.styleFrom(
-                    foregroundColor: const Color(0xFF3B5998),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 10,
                     ),
-                  ),
-                  child: Text(widget.closeButton),
+                    const SizedBox(height: 16),
+
+                    // Action Buttons
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        TextButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                          },
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.grey[700],
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
+                          ),
+                          child: const Text('Cancel'),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            // Find knowledge bases that were unchecked (removed)
+                            final Set<String> uncheckedIds = initialSelectedIds
+                                .difference(Set.from(tempSelectedIds));
+
+                            // Find knowledge bases that were newly selected (added)
+                            final Set<String> newlyAddedIds = Set<String>.from(
+                              tempSelectedIds,
+                            ).difference(initialSelectedIds);
+
+                            if (uncheckedIds.isNotEmpty) {
+                              // Get names of unchecked knowledge bases
+                              final List<String> uncheckedNames =
+                                  uncheckedIds.map((id) {
+                                    final knowledge = _assistantKnowledges
+                                        .firstWhere(
+                                          (k) => k.id == id,
+                                          orElse:
+                                              () => Knowledge(
+                                                knowledgeName: 'Unknown',
+                                                description: '',
+                                              ),
+                                        );
+                                    return knowledge.knowledgeName;
+                                  }).toList();
+
+                              // Close the multi-select dialog first
+                              Navigator.of(context).pop();
+
+                              // Show confirmation dialog for deleting unchecked knowledge bases
+                              _showBulkDeleteConfirmationDialog(
+                                context,
+                                uncheckedIds.toList(),
+                                uncheckedNames,
+                                tempSelectedIds,
+                                newlyAddedIds.toList(),
+                              );
+                            } else if (newlyAddedIds.isNotEmpty) {
+                              // Close dialog first
+                              Navigator.of(context).pop();
+
+                              // Immediately import new knowledge bases
+                              _importNewKnowledgeBases(
+                                newlyAddedIds.toList(),
+                                tempSelectedIds,
+                              );
+                            } else {
+                              // No changes, just update the UI
+                              this.setState(() {
+                                _selectedKnowledgeIds = List.from(
+                                  tempSelectedIds,
+                                );
+                                _selectedKnowledgeNames =
+                                    _selectedKnowledgeIds.map((id) {
+                                      final knowledge = _knowledgeList
+                                          .firstWhere(
+                                            (k) => k.id == id,
+                                            orElse:
+                                                () => Knowledge(
+                                                  knowledgeName: 'Unknown',
+                                                  description: '',
+                                                ),
+                                          );
+                                      return knowledge.knowledgeName;
+                                    }).toList();
+                              });
+                              Navigator.of(context).pop();
+                            }
+                          },
+                          style: TextButton.styleFrom(
+                            foregroundColor: const Color(0xFF3B5998),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 10,
+                            ),
+                          ),
+                          child: const Text('Apply'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // Add method to confirm deletion of multiple knowledge bases
+  Future<void> _showBulkDeleteConfirmationDialog(
+    BuildContext context,
+    List<String> knowledgeIdsToDelete,
+    List<String> knowledgeNamesToDelete,
+    List<String> newSelectionIds,
+    List<String> newlyAddedIds,
+  ) async {
+    await showGeneralDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 300),
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 0.2),
+            end: Offset.zero,
+          ).animate(
+            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+          ),
+          child: FadeTransition(opacity: animation, child: child),
+        );
+      },
+      pageBuilder: (BuildContext dialogContext, _, __) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.all(0),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
                 ),
               ],
             ),
-          ],
-        ),
-      ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header with gradient
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFF5A5F), Color(0xFFFF414D)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(24),
+                      topRight: Radius.circular(24),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      // Warning Icon with glowing effect
+                      Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.white.withOpacity(0.1),
+                              blurRadius: 15,
+                              spreadRadius: 5,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.delete_sweep_outlined,
+                          color: Colors.white,
+                          size: 40,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Title
+                      const Text(
+                        'Confirm Bulk Removal',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Content
+                Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Description Text
+                      const Text(
+                        'You have unchecked the following knowledge bases:',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Color(0xFF555555),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Knowledge List Box
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxHeight: MediaQuery.of(context).size.height * 0.3,
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.grey.shade50,
+                                Colors.grey.shade100.withOpacity(0.5),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: Colors.grey.withOpacity(0.2),
+                              width: 1,
+                            ),
+                          ),
+                          child: SingleChildScrollView(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children:
+                                  knowledgeNamesToDelete.map((name) {
+                                    return Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 6,
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.all(6),
+                                            decoration: BoxDecoration(
+                                              color: Colors.red.withOpacity(
+                                                0.1,
+                                              ),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: const Icon(
+                                              Icons.remove_circle_outline,
+                                              color: Colors.red,
+                                              size: 16,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Text(
+                                              name,
+                                              style: const TextStyle(
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.w500,
+                                                color: Color(0xFF444444),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }).toList(),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Confirmation Question
+                      const Text(
+                        'Do you want to remove these knowledge bases from this assistant?',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF333333),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Warning box with enhanced styling
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 16,
+                          horizontal: 18,
+                        ),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.red.shade50,
+                              Colors.red.shade100.withOpacity(0.5),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: Colors.red.withOpacity(0.25),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.red.withOpacity(0.2),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.warning_amber_rounded,
+                                color: Colors.red,
+                                size: 18,
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            const Expanded(
+                              child: Text(
+                                'This action cannot be undone. All associated data will be permanently removed.',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.w500,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+
+                      // Action Buttons with enhanced styling
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // Cancel button
+                          Expanded(
+                            child: TextButton(
+                              onPressed: () {
+                                Navigator.of(dialogContext).pop();
+                                // Reopen the multi-select dialog to let the user continue selection
+                                _showMultiSelectDialog(context);
+                              },
+                              style: TextButton.styleFrom(
+                                foregroundColor: const Color(0xFF666666),
+                                backgroundColor: Colors.grey.withOpacity(0.1),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                elevation: 0,
+                              ),
+                              child: const Text(
+                                'Cancel',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+
+                          // Remove button
+                          Expanded(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(14),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(
+                                      0xFFFF414D,
+                                    ).withOpacity(0.3),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color(0xFFFF5A5F),
+                                    Color(0xFFFF414D),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                              ),
+                              child: ElevatedButton(
+                                onPressed: () async {
+                                  Navigator.of(dialogContext).pop();
+
+                                  setState(() {
+                                    _isLoading = true;
+                                  });
+
+                                  // Track deletions
+                                  final List<String> successfullyDeleted = [];
+                                  final List<String> failedToDelete = [];
+
+                                  // Process each knowledge base to delete
+                                  for (
+                                    int i = 0;
+                                    i < knowledgeIdsToDelete.length;
+                                    i++
+                                  ) {
+                                    final knowledgeId = knowledgeIdsToDelete[i];
+                                    final knowledgeName =
+                                        knowledgeNamesToDelete[i];
+
+                                    if (_assistantId != null) {
+                                      final success = await _assistantService
+                                          .deleteKnowledgeFromAssistant(
+                                            _assistantId!,
+                                            knowledgeId,
+                                          );
+
+                                      if (success) {
+                                        successfullyDeleted.add(knowledgeName);
+                                        // Remove from assistant knowledge list
+                                        _assistantKnowledges.removeWhere(
+                                          (knowledge) =>
+                                              knowledge.id == knowledgeId,
+                                        );
+                                      } else {
+                                        failedToDelete.add(knowledgeName);
+                                      }
+                                    }
+                                  }
+
+                                  // Update the main state with the new selection
+                                  setState(() {
+                                    _isLoading = false;
+
+                                    // Update selected knowledge IDs and names based on deletion results
+                                    _selectedKnowledgeIds = newSelectionIds;
+                                    _selectedKnowledgeNames =
+                                        _selectedKnowledgeIds.map((id) {
+                                          final knowledge = _knowledgeList
+                                              .firstWhere(
+                                                (k) => k.id == id,
+                                                orElse:
+                                                    () => Knowledge(
+                                                      knowledgeName: 'Unknown',
+                                                      description: '',
+                                                    ),
+                                              );
+                                          return knowledge.knowledgeName;
+                                        }).toList();
+
+                                    // Show appropriate messages
+                                    if (failedToDelete.isNotEmpty) {
+                                      if (successfullyDeleted.isEmpty) {
+                                        _errorMessage =
+                                            'Failed to remove any knowledge bases from this assistant.';
+                                      } else {
+                                        _errorMessage =
+                                            'Failed to remove some knowledge bases: ${failedToDelete.join(", ")}';
+                                      }
+
+                                      // Scroll to top to show error message
+                                      Future.delayed(
+                                        const Duration(milliseconds: 100),
+                                        () {
+                                          if (context.mounted) {
+                                            Scrollable.ensureVisible(
+                                              context,
+                                              alignment: 0.0,
+                                              duration: const Duration(
+                                                milliseconds: 600,
+                                              ),
+                                            );
+                                          }
+                                        },
+                                      );
+                                    }
+                                  });
+
+                                  // Show success message outside of setState
+                                  if (successfullyDeleted.isNotEmpty &&
+                                      context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          successfullyDeleted.length == 1
+                                              ? 'Successfully removed "${successfullyDeleted.first}" from this assistant'
+                                              : 'Successfully removed ${successfullyDeleted.length} knowledge bases from this assistant',
+                                        ),
+                                        backgroundColor: Colors.green,
+                                      ),
+                                    );
+                                  }
+
+                                  // If there are newly added knowledge bases, import them now
+                                  if (newlyAddedIds.isNotEmpty) {
+                                    _importNewKnowledgeBases(
+                                      newlyAddedIds,
+                                      newSelectionIds,
+                                    );
+                                  }
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.transparent,
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  shadowColor: Colors.transparent,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Remove All',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Add method to import new knowledge bases
+  Future<void> _importNewKnowledgeBases(
+    List<String> knowledgeIdsToImport,
+    List<String> allSelectedIds,
+  ) async {
+    if (_assistantId == null || knowledgeIdsToImport.isEmpty) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    // Track imports
+    final List<String> successfullyImported = [];
+    final List<String> failedToImport = [];
+
+    // Process each knowledge base to import
+    for (final knowledgeId in knowledgeIdsToImport) {
+      final knowledge = _knowledgeList.firstWhere(
+        (k) => k.id == knowledgeId,
+        orElse: () => Knowledge(knowledgeName: 'Unknown', description: ''),
+      );
+
+      final knowledgeName = knowledge.knowledgeName;
+
+      debugPrint('Importing knowledge: $knowledgeName (ID: $knowledgeId)');
+
+      final success = await _assistantService.importKnowledgeToAssistant(
+        _assistantId!,
+        knowledgeId,
+      );
+
+      if (success) {
+        successfullyImported.add(knowledgeName);
+        // Add to assistant knowledge list
+        if (!_assistantKnowledges.any((k) => k.id == knowledgeId)) {
+          _assistantKnowledges.add(knowledge);
+        }
+      } else {
+        failedToImport.add(knowledgeName);
+      }
+    }
+
+    // Update the main state with the new selection
+    setState(() {
+      _isLoading = false;
+
+      // Update selected knowledge IDs and names
+      _selectedKnowledgeIds = allSelectedIds;
+      _selectedKnowledgeNames =
+          _selectedKnowledgeIds.map((id) {
+            final knowledge = _knowledgeList.firstWhere(
+              (k) => k.id == id,
+              orElse:
+                  () => Knowledge(knowledgeName: 'Unknown', description: ''),
+            );
+            return knowledge.knowledgeName;
+          }).toList();
+
+      // Show appropriate messages
+      if (failedToImport.isNotEmpty) {
+        if (successfullyImported.isEmpty) {
+          _errorMessage =
+              'Failed to import any knowledge bases to this assistant.';
+        } else {
+          _errorMessage =
+              'Failed to import some knowledge bases: ${failedToImport.join(", ")}';
+        }
+
+        // Scroll to top to show error message
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (context.mounted) {
+            Scrollable.ensureVisible(
+              context,
+              alignment: 0.0,
+              duration: const Duration(milliseconds: 600),
+            );
+          }
+        });
+      }
+    });
+  }
+
+  // Add delete confirmation dialog method
+  Future<void> _showDeleteConfirmationDialog(
+    BuildContext context,
+    String knowledgeId,
+    String knowledgeName,
+    int index,
+  ) async {
+    await showGeneralDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 300),
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 0.2),
+            end: Offset.zero,
+          ).animate(
+            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+          ),
+          child: FadeTransition(opacity: animation, child: child),
+        );
+      },
+      pageBuilder: (BuildContext dialogContext, _, __) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.all(0),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header with gradient
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFF5A5F), Color(0xFFFF414D)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(24),
+                      topRight: Radius.circular(24),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      // Warning Icon with glowing effect
+                      Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.white.withOpacity(0.1),
+                              blurRadius: 15,
+                              spreadRadius: 5,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.delete_outline_rounded,
+                          color: Colors.white,
+                          size: 40,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Title
+                      const Text(
+                        'Confirm Removal',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Content
+                Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    children: [
+                      // Knowledge name with highlight
+                      RichText(
+                        textAlign: TextAlign.center,
+                        text: TextSpan(
+                          style: const TextStyle(
+                            fontSize: 17,
+                            color: Color(0xFF555555),
+                            height: 1.5,
+                          ),
+                          children: [
+                            const TextSpan(
+                              text: 'Are you sure you want to remove ',
+                            ),
+                            TextSpan(
+                              text: '"$knowledgeName"',
+                              style: const TextStyle(
+                                color: Color(0xFF3B5998),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const TextSpan(text: ' from this assistant?'),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Warning box with enhanced styling
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 16,
+                          horizontal: 18,
+                        ),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.red.shade50,
+                              Colors.red.shade100.withOpacity(0.5),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: Colors.red.withOpacity(0.25),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.red.withOpacity(0.2),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.warning_amber_rounded,
+                                color: Colors.red,
+                                size: 18,
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            const Expanded(
+                              child: Text(
+                                'This action cannot be undone. All associated data will be permanently removed.',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.w500,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+
+                      // Action Buttons with enhanced styling
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // Cancel button
+                          Expanded(
+                            child: TextButton(
+                              onPressed: () {
+                                Navigator.of(dialogContext).pop();
+                              },
+                              style: TextButton.styleFrom(
+                                foregroundColor: const Color(0xFF666666),
+                                backgroundColor: Colors.grey.withOpacity(0.1),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                elevation: 0,
+                              ),
+                              child: const Text(
+                                'Cancel',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+
+                          // Remove button
+                          Expanded(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(14),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(
+                                      0xFFFF414D,
+                                    ).withOpacity(0.3),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color(0xFFFF5A5F),
+                                    Color(0xFFFF414D),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                              ),
+                              child: ElevatedButton(
+                                onPressed: () async {
+                                  Navigator.of(dialogContext).pop();
+
+                                  // Show loading indicator
+                                  setState(() {
+                                    _isLoading = true;
+                                  });
+
+                                  // Delete the knowledge base from the assistant
+                                  if (_assistantId != null) {
+                                    final success = await _assistantService
+                                        .deleteKnowledgeFromAssistant(
+                                          _assistantId!,
+                                          knowledgeId,
+                                        );
+
+                                    // Handle the result
+                                    setState(() {
+                                      _isLoading = false;
+
+                                      if (success) {
+                                        // Remove from the selected lists
+                                        _selectedKnowledgeIds.removeAt(index);
+                                        _selectedKnowledgeNames.removeAt(index);
+
+                                        // Also remove from the assistant knowledge list if present
+                                        _assistantKnowledges.removeWhere(
+                                          (knowledge) =>
+                                              knowledge.id == knowledgeId,
+                                        );
+
+                                        // Show success message
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                'Successfully removed "$knowledgeName" from this assistant',
+                                              ),
+                                              backgroundColor: Colors.green,
+                                            ),
+                                          );
+                                        }
+                                      } else {
+                                        // Show error message
+                                        _errorMessage =
+                                            'Failed to remove "$knowledgeName" from this assistant. Please try again.';
+
+                                        // Scroll to top to show error message
+                                        Future.delayed(
+                                          const Duration(milliseconds: 100),
+                                          () {
+                                            if (context.mounted) {
+                                              Scrollable.ensureVisible(
+                                                context,
+                                                alignment: 0.0,
+                                                duration: const Duration(
+                                                  milliseconds: 600,
+                                                ),
+                                              );
+                                            }
+                                          },
+                                        );
+                                      }
+                                    });
+                                  }
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.transparent,
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  shadowColor: Colors.transparent,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Remove',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

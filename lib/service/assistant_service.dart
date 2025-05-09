@@ -1,6 +1,7 @@
 import 'package:amd_chat_ai/config/dio_clients.dart';
 import 'package:amd_chat_ai/config/user_storage.dart';
 import 'package:amd_chat_ai/model/assistant.dart';
+import 'package:amd_chat_ai/model/knowledge.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
@@ -383,6 +384,151 @@ class AssistantService {
     } catch (e) {
       debugPrint('AssistantService: Unexpected error: $e');
       return null;
+    }
+  }
+
+  /// Imports knowledge to an assistant
+  ///
+  /// Parameters:
+  /// - assistantId: ID of the assistant
+  /// - knowledgeId: ID of the knowledge to import
+  Future<bool> importKnowledgeToAssistant(
+    String assistantId,
+    String knowledgeId,
+  ) async {
+    try {
+      final userId = await UserStorage.getUserId();
+
+      if (userId == null) {
+        debugPrint('AssistantService: User not logged in');
+        return false;
+      }
+
+      debugPrint(
+        'AssistantService: Importing knowledge $knowledgeId to assistant $assistantId',
+      );
+
+      final response = await DioClients.kbClient.post(
+        '/kb-core/v1/ai-assistant/$assistantId/knowledges/$knowledgeId',
+        options: Options(headers: {'x-jarvis-guid': userId}),
+      );
+
+      debugPrint(
+        'AssistantService: Import knowledge response status: ${response.statusCode}',
+      );
+
+      return response.statusCode == 200 ||
+          response.statusCode == 201 ||
+          response.statusCode == 204;
+    } on DioException catch (e) {
+      debugPrint(
+        'AssistantService: Error importing knowledge: ${e.response?.data ?? e.message}',
+      );
+      return false;
+    } catch (e) {
+      debugPrint('AssistantService: Unexpected error: $e');
+      return false;
+    }
+  }
+
+  /// Gets knowledge bases associated with an assistant
+  ///
+  /// Parameters:
+  /// - assistantId: ID of the assistant
+  /// - offset: Starting position for pagination
+  /// - limit: Number of items to fetch
+  Future<KnowledgeResponse?> getAssistantKnowledges({
+    required String assistantId,
+    int offset = 0,
+    int limit = 20,
+  }) async {
+    try {
+      final userId = await UserStorage.getUserId();
+
+      if (userId == null) {
+        debugPrint('AssistantService: User not logged in');
+        return null;
+      }
+
+      debugPrint(
+        'AssistantService: Getting knowledges for assistant $assistantId',
+      );
+
+      // Build query parameters
+      final Map<String, dynamic> queryParams = {
+        'offset': offset,
+        'limit': limit,
+      };
+
+      final response = await DioClients.kbClient.get(
+        '/kb-core/v1/ai-assistant/$assistantId/knowledges',
+        queryParameters: queryParams,
+        options: Options(headers: {'x-jarvis-guid': userId}),
+      );
+
+      debugPrint(
+        'AssistantService: Get assistant knowledges response status: ${response.statusCode}',
+      );
+
+      if (response.statusCode == 200) {
+        debugPrint('AssistantService: Successfully retrieved knowledges');
+        return KnowledgeResponse.fromJson(response.data);
+      } else {
+        debugPrint('AssistantService: Failed to retrieve knowledges');
+        return null;
+      }
+    } on DioException catch (e) {
+      debugPrint(
+        'AssistantService: Error getting assistant knowledges: ${e.response?.data ?? e.message}',
+      );
+      return null;
+    } catch (e) {
+      debugPrint('AssistantService: Unexpected error: $e');
+      return null;
+    }
+  }
+
+  /// Deletes a knowledge base from an assistant
+  ///
+  /// Parameters:
+  /// - assistantId: ID of the assistant
+  /// - knowledgeId: ID of the knowledge to delete
+  Future<bool> deleteKnowledgeFromAssistant(
+    String assistantId,
+    String knowledgeId,
+  ) async {
+    try {
+      final userId = await UserStorage.getUserId();
+
+      if (userId == null) {
+        debugPrint('AssistantService: User not logged in');
+        return false;
+      }
+
+      debugPrint(
+        'AssistantService: Deleting knowledge $knowledgeId from assistant $assistantId',
+      );
+
+      final response = await DioClients.kbClient.delete(
+        '/kb-core/v1/ai-assistant/$assistantId/knowledges/$knowledgeId',
+        options: Options(headers: {'x-jarvis-guid': userId}),
+      );
+
+      debugPrint(
+        'AssistantService: Delete knowledge response status: ${response.statusCode}',
+      );
+
+      return response.statusCode == 200 ||
+          response.statusCode == 204 ||
+          response.statusCode == 202;
+    } on DioException catch (e) {
+      debugPrint(
+        'AssistantService: Error deleting knowledge: ${e.response?.data ?? e.message}',
+      );
+      return false;
+    } catch (e) {
+      debugPrint('AssistantService: Unexpected error: $e');
+      return false;
     }
   }
 }
