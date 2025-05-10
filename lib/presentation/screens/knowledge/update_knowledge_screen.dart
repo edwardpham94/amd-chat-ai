@@ -1,3 +1,4 @@
+import 'package:amd_chat_ai/model/datasource.dart';
 import 'package:amd_chat_ai/service/knowledge_service.dart';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
@@ -7,14 +8,14 @@ import 'package:amd_chat_ai/presentation/screens/widgets/base_screen.dart';
 import 'package:amd_chat_ai/presentation/screens/widgets/primary_button.dart';
 import 'package:amd_chat_ai/presentation/screens/widgets/file_picker_widget.dart';
 
-class CreateKnowledgeScreen extends StatefulWidget {
-  const CreateKnowledgeScreen({super.key});
+class UpdateKnowledgeScreen extends StatefulWidget {
+  const UpdateKnowledgeScreen({super.key});
 
   @override
-  State<CreateKnowledgeScreen> createState() => _CreateKnowledgeScreenState();
+  State<UpdateKnowledgeScreen> createState() => _UpdateKnowledgeScreenState();
 }
 
-class _CreateKnowledgeScreenState extends State<CreateKnowledgeScreen>
+class _UpdateKnowledgeScreenState extends State<UpdateKnowledgeScreen>
     with SingleTickerProviderStateMixin {
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
@@ -28,6 +29,12 @@ class _CreateKnowledgeScreenState extends State<CreateKnowledgeScreen>
   String? _selectedWebsiteName;
   String? _knowledgeId;
 
+  List<Datasource> _datasourceItems = [];
+  bool _isFetching = false;
+  int _offset = 0;
+  final int _limit = 10;
+  bool _hasNext = true;
+
   @override
   void initState() {
     super.initState();
@@ -39,9 +46,15 @@ class _CreateKnowledgeScreenState extends State<CreateKnowledgeScreen>
 
     // Retrieve the ID from the arguments and fetch knowledge details if editing
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final args = ModalRoute.of(context)?.settings.arguments as String?;
-      if (args != null) {
-        _knowledgeId = args;
+      final Map<String, dynamic>? knowledgeData =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+
+      if (knowledgeData != null) {
+        setState(() {
+          _knowledgeId = knowledgeData['id'];
+          _nameController.text = knowledgeData['knowledgeName'];
+          _descriptionController.text = knowledgeData['description'];
+        });
       }
     });
   }
@@ -54,7 +67,7 @@ class _CreateKnowledgeScreenState extends State<CreateKnowledgeScreen>
     super.dispose();
   }
 
-  Future<void> _handleCreateKnowledge() async {
+  Future<void> _handleUpdateKnowledge() async {
     if (_nameController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a knowledge name')),
@@ -74,8 +87,9 @@ class _CreateKnowledgeScreenState extends State<CreateKnowledgeScreen>
     });
 
     try {
-      // Call the createKnowledge function
-      final knowledge = await _knowledgeService.createKnowledge(
+      // Call the updateKnowledge function
+      final knowledge = await _knowledgeService.updateKnowledge(
+        id: _knowledgeId!,
         knowledgeName: _nameController.text.trim(),
         description: _descriptionController.text.trim(),
       );
@@ -83,73 +97,15 @@ class _CreateKnowledgeScreenState extends State<CreateKnowledgeScreen>
       if (knowledge != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'Knowledge "${knowledge.knowledgeName}" created successfully!',
-            ),
+            content: Text('Knowledge "${knowledge}" updated successfully!'),
           ),
         );
-
-        // Get the ID of the created knowledge
-        final String knowledgeId = knowledge.id ?? '';
-
-        if (_selectedFile != null && _selectedFile!['path'] != null) {
-          // Upload the local file
-          final String filePath = _selectedFile!['path'];
-          final responseId = await _knowledgeService.uploadLocalFile(
-            filePath: filePath,
-          );
-
-          if (responseId != null) {
-            // Import the file to the knowledge
-            final success = await _knowledgeService.importDataSourceToKnowledge(
-              id: knowledgeId,
-              fileName: _selectedFile!['name'],
-              fileId: responseId,
-              type: 'file',
-            );
-
-            if (success) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Attached file successfully!')),
-              );
-            } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Failed to upload file. Please try again.'),
-                ),
-              );
-            }
-          }
-        }
-
-        if (_selectedWebsiteUrl != null) {
-          print(
-            'Selected website URL: $_selectedWebsiteName $_selectedWebsiteUrl ',
-          );
-          final success = await _knowledgeService.uploadFromWebsite(
-            id: knowledgeId,
-            webUrl: _selectedWebsiteUrl!,
-            unitName: _selectedWebsiteName!,
-          );
-
-          if (success) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Attached website successfully!')),
-            );
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Failed to upload website. Please try again.'),
-              ),
-            );
-          }
-        }
 
         Navigator.pop(context);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Failed to create knowledge. Please try again.'),
+            content: Text('Failed to update knowledge. Please try again.'),
           ),
         );
       }
@@ -207,7 +163,7 @@ class _CreateKnowledgeScreenState extends State<CreateKnowledgeScreen>
     ];
 
     return BaseScreen(
-      title: _knowledgeId == null ? 'Create Knowledge' : 'Edit Knowledge',
+      title: 'Update Knowledge',
       showBackButton: true,
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
@@ -217,10 +173,10 @@ class _CreateKnowledgeScreenState extends State<CreateKnowledgeScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Knowledge Name
-              _buildSectionTitle('Knowledge Name'),
+              _buildSectionTitle('Name'),
               _buildTextField(
                 controller: _nameController,
-                hintText: 'Enter knowledge name',
+                hintText: 'Enter name',
                 prefixIcon: Icons.bookmark_border_rounded,
                 maxLines: 1,
               ),
@@ -231,76 +187,55 @@ class _CreateKnowledgeScreenState extends State<CreateKnowledgeScreen>
               _buildSectionTitle('Description'),
               _buildTextField(
                 controller: _descriptionController,
-                hintText: 'Describe your knowledge resource...',
+                hintText: 'Describe knowledge ...',
                 prefixIcon: Icons.description_outlined,
                 maxLines: 5,
               ),
 
               const SizedBox(height: 24),
 
-              // Import Knowledge - Replace the dropdown with a button
-              _buildSectionTitle('Import Knowledge'),
+              // _buildSectionTitle('Data Source'),
               InkWell(
-                onTap: () => _showSourceSelectionDialog(context, sources),
-                child: Container(
-                  height: 60,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withAlpha(13),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
+                onTap: () {
+                  Navigator.pushNamed(
+                    context,
+                    '/datasource',
+                    arguments: {'knowledgeId': _knowledgeId},
+                  );
+                },
+                child: SizedBox(
+                  width: double.infinity,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 16,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.blue,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      'View Data Sources',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
                       ),
-                    ],
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.source_outlined,
-                        color: Colors.grey[600],
-                        size: 22,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          _selectedSource ?? 'Select Source',
-                          style: TextStyle(
-                            color:
-                                _selectedSource != null
-                                    ? Colors.black
-                                    : Colors.grey,
-                            fontSize: 16,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Icon(Icons.arrow_drop_down, color: Colors.grey[600]),
-                    ],
+                      textAlign:
+                          TextAlign.center,
+                    ),
                   ),
                 ),
               ),
 
-              // Selected file or website display
-              if (_selectedSource == 'Local files')
-                _buildSelectedFile()
-              else if (_selectedSource == 'Website')
-                _buildSelectedWebsite(),
-
               const SizedBox(height: 48),
 
-              // Create Button
+              // Update Button
               _isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : PrimaryButton(
-                    label:
-                        _knowledgeId == null
-                            ? 'Create Knowledge'
-                            : 'Update Knowledge',
-                    onPressed: _handleCreateKnowledge,
+                    label: 'Update Knowledge',
+                    onPressed: _handleUpdateKnowledge,
                   ),
 
               const SizedBox(height: 24),
@@ -312,7 +247,7 @@ class _CreateKnowledgeScreenState extends State<CreateKnowledgeScreen>
   }
 
   // Update the file upload dialog
-void _showFileUploadDialog(BuildContext context) async {
+  void _showFileUploadDialog(BuildContext context) async {
     final result = await FilePicker.platform.pickFiles();
 
     if (result != null && result.files.single.path != null) {
@@ -728,7 +663,7 @@ void _showFileUploadDialog(BuildContext context) async {
                                   setState(() {
                                     _selectedSource = 'Website';
                                     _selectedWebsiteUrl = linkController.text;
-                                    _selectedWebsiteName = nameController.text; 
+                                    _selectedWebsiteName = nameController.text;
                                   });
                                   Navigator.pop(context);
                                 }

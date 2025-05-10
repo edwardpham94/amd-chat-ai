@@ -84,6 +84,14 @@ class AppSidebar extends StatelessWidget {
                 Navigator.pushNamed(context, '/assistant');
               },
             ),
+            ListTile(
+              leading: const Icon(Icons.email_outlined),
+              title: const Text('Email Assistant'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/email');
+              },
+            ),
             const Divider(),
             ListTile(
               leading: const Icon(Icons.settings),

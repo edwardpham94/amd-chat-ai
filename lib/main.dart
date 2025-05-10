@@ -1,3 +1,6 @@
+import 'package:amd_chat_ai/presentation/screens/chat-ai/email_chat.dart';
+import 'package:amd_chat_ai/presentation/screens/knowledge/datasource_screen.dart';
+import 'package:amd_chat_ai/presentation/screens/knowledge/update_knowledge_screen.dart';
 import 'package:amd_chat_ai/presentation/screens/splash_screen.dart';
 import 'package:amd_chat_ai/presentation/screens/authentication/enter_otp_screen.dart';
 import 'package:amd_chat_ai/presentation/screens/authentication/forget_password_screen.dart';
@@ -38,6 +41,8 @@ class MyApp extends StatelessWidget {
         '/signup': (context) => const SignUpScreen(),
         '/knowledge': (context) => const KnowledgeScreen(),
         '/create-knowledge': (context) => const CreateKnowledgeScreen(),
+        '/update-knowledge': (context) => const UpdateKnowledgeScreen(),
+        '/datasource': (context) => const DatasourceScreen(),
         '/prompt': (context) => const PromptScreen(),
         '/create-prompt': (context) => const CreatePromptScreen(),
         '/update-prompt': (context) => const UpdatePromptScreen(),
@@ -45,6 +50,7 @@ class MyApp extends StatelessWidget {
         '/create-assistant': (context) => const CreateAssistantScreen(),
         '/update-assistant': (context) => const UpdateAssistantScreen(),
         '/chat-ai': (context) => const ChatAIScreen(),
+        '/email': (context) => const EmailChatScreen(),
         '/profile': (context) => const ProfileScreen(),
         '/forget-password': (context) => const ForgetPasswordScreen(),
         '/enter-otp': (context) => const EnterOTPScreen(),
