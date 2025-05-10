@@ -7,10 +7,12 @@ import 'package:amd_chat_ai/service/chat_service.dart';
 import 'package:amd_chat_ai/service/prompt_service.dart';
 import 'package:amd_chat_ai/service/assistant_service.dart';
 import 'package:amd_chat_ai/service/user_service.dart';
+import 'package:amd_chat_ai/services/ad_service.dart';
 import 'package:flutter/material.dart';
 import '../widgets/chat_message.dart';
 import 'package:amd_chat_ai/presentation/screens/widgets/base_screen.dart';
 import 'package:flutter/services.dart';
+import 'dart:async';
 
 class ChatAIScreen extends StatefulWidget {
   const ChatAIScreen({super.key});
@@ -25,6 +27,7 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
   final FocusNode _messageFocusNode = FocusNode();
   final List<Map<String, dynamic>> _messages = [];
   bool _showWelcomeMessage = true;
+  Timer? _adTimer;
 
   // Conversation history
   final ChatAIService _chatService = ChatAIService();
@@ -262,6 +265,21 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
     // Load data in parallel for faster startup
     Future.wait([_fetchCustomAssistants(), _fetchTokenUsage()]);
 
+    // Show initial ad after a short delay
+    Future.delayed(const Duration(seconds: 1), () {
+      if (mounted) {
+        AdService().showInterstitialAd(isTimerTriggered: false);
+      }
+    });
+
+    // Set up timer to show ads every 5 minutes
+    _adTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
+      if (mounted) {
+        debugPrint('Timer triggered - attempting to show ad');
+        AdService().showInterstitialAd(isTimerTriggered: true);
+      }
+    });
+
     // Register listener for keyboard visibility
     _messageFocusNode.addListener(_onFocusChange);
   }
@@ -277,6 +295,7 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
     _messageController.dispose();
     _messageFocusNode.removeListener(_onFocusChange);
     _messageFocusNode.dispose();
+    _adTimer?.cancel(); // Cancel the ad timer
     super.dispose();
   }
 

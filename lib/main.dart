@@ -15,9 +15,12 @@ import 'package:amd_chat_ai/presentation/screens/assistant/assistant_screen.dart
 import 'package:amd_chat_ai/presentation/screens/assistant/create_assistant_screen.dart';
 import 'package:amd_chat_ai/presentation/screens/assistant/update_assistant_screen.dart';
 import 'package:amd_chat_ai/presentation/screens/assistant/ask_assistant.dart';
+import 'package:amd_chat_ai/services/ad_service.dart';
 import 'package:flutter/material.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await AdService().initialize();
   runApp(const MyApp());
 }
 
