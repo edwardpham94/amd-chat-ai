@@ -84,6 +84,24 @@ class KnowledgeService {
     }
   }
 
+  Future<bool> deletDatasource({
+    required String knowledgeId,
+    required String datasourceId,
+  }) async {
+    try {
+      await DioClients.kbClient.delete(
+        '/kb-core/v1/knowledge/$knowledgeId/datasources/$datasourceId',
+      );
+
+      return true;
+    } on DioException catch (e) {
+      debugPrint(
+        'KnowledgeService: Error deleting datasource: ${e.response?.data ?? e.message}',
+      );
+      return false;
+    }
+  }
+
   Future<Knowledge> getKnowledgeById(String id) async {
     try {
       final response = await DioClients.kbClient.get(
@@ -352,7 +370,6 @@ class KnowledgeService {
       return null;
     }
   }
-
 
   Future<bool> handleDisabledDatasource({
     required String knowledgeId,
