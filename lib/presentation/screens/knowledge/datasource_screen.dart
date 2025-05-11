@@ -28,6 +28,7 @@ class _DatasourceScreenState extends State<DatasourceScreen> {
   String? _knowledge_unit_name;
   String? _confluence_username;
   String? _confluence_api_token;
+  String? _selected_datasource_id_delete;
 
   final TextEditingController _searchController = TextEditingController();
 
@@ -180,7 +181,11 @@ class _DatasourceScreenState extends State<DatasourceScreen> {
     }
   }
 
-  void _showDeleteConfirmation(BuildContext context, String itemName) {
+  void _showDeleteConfirmation(
+    BuildContext context,
+    String itemName,
+    String datasourceId,
+  ) {
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -226,7 +231,7 @@ class _DatasourceScreenState extends State<DatasourceScreen> {
 
                     // Title
                     const Text(
-                      'Delete Prompt',
+                      'Delete Datasource',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -277,48 +282,31 @@ class _DatasourceScreenState extends State<DatasourceScreen> {
                         // Delete Button
                         Expanded(
                           child: ElevatedButton(
-                            onPressed: () {
-                              // Find the prompt ID by title
-                              final datasource =
-                                  _datasources
-                                      .firstWhere(
-                                        (p) => p.name == itemName,
-                                        orElse:
-                                            () => Datasource(
-                                              id: '',
-                                              userId: '',
-                                              createdAt:
-                                                  DateTime.now()
-                                                      .toIso8601String(),
-                                              updatedAt:
-                                                  DateTime.now()
-                                                      .toIso8601String(),
-                                              name: '',
-                                              knowledgeId: '',
-                                              status: false,
-                                              metadata: Metadata(
-                                                fileId: '',
-                                                fileUrl: '',
-                                                mimeType: "",
-                                                knowledgeId: '',
-                                              ),
-                                            ),
-                                      )
-                                      .id;
+                            onPressed: () async {
+                              var response = await _knowledgeService
+                                  .deletDatasource(
+                                    knowledgeId: _knowledgeId!,
+                                    datasourceId: datasourceId,
+                                  );
 
-                              // if (datasourceId.isNotEmpty) {
-                              //   _deletePrompt(promptId, itemName);
-                              // } else {
-                              //   Navigator.of(context).pop();
-                              //   ScaffoldMessenger.of(context).showSnackBar(
-                              //     const SnackBar(
-                              //       content: Text(
-                              //         'Could not find prompt to delete',
-                              //       ),
-                              //       behavior: SnackBarBehavior.floating,
-                              //     ),
-                              //   );
-                              // }
+                              if (response) {
+                                _loadDatasources(refresh: true);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Datasource deleted'),
+                                  ),
+                                );
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Failed to delete datasource',
+                                    ),
+                                  ),
+                                );
+                              }
+
+                              Navigator.of(context).pop();
                             },
                             style: ElevatedButton.styleFrom(
                               foregroundColor: Colors.white,
@@ -1886,10 +1874,13 @@ class _DatasourceScreenState extends State<DatasourceScreen> {
                                               color: Colors.red,
                                             ),
                                             onPressed:
-                                                () => _showDeleteConfirmation(
-                                                  context,
-                                                  datasource.name,
-                                                ),
+                                                () => {
+                                                  _showDeleteConfirmation(
+                                                    context,
+                                                    datasource.name,
+                                                    datasource.id!,
+                                                  ),
+                                                },
                                           ),
                                         ),
                                       ],
