@@ -4,6 +4,8 @@ import 'package:amd_chat_ai/model/assistant.dart';
 import 'package:amd_chat_ai/presentation/screens/widgets/base_screen.dart';
 import 'package:amd_chat_ai/presentation/screens/widgets/new_button_widget.dart';
 import 'package:amd_chat_ai/service/assistant_service.dart';
+import 'package:amd_chat_ai/service/knowledge_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class AssistantScreen extends StatefulWidget {
   const AssistantScreen({super.key});
@@ -865,6 +867,163 @@ class _AssistantScreenState extends State<AssistantScreen> {
                                                       ? 'Remove from favorites'
                                                       : 'Add to favorites',
                                             ),
+                                            // Publish button
+                                            PopupMenuButton<String>(
+                                              tooltip: 'Publish assistant',
+                                              icon: const Icon(
+                                                Icons.share_rounded,
+                                                color: Color(0xFF415DF2),
+                                              ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(16),
+                                              ),
+                                              elevation: 4,
+                                              offset: const Offset(0, 40),
+                                              onSelected: (String platform) {
+                                                // Handle publishing to selected platform
+                                                switch (platform) {
+                                                  case 'Slack':
+                                                    _showSlackConfigModal(
+                                                      context,
+                                                      assistant.id,
+                                                    );
+                                                    break;
+                                                  case 'Messenger':
+                                                    _showMessengerConfigModal(
+                                                      context,
+                                                      assistant.id,
+                                                    );
+                                                    break;
+                                                  case 'Telegram':
+                                                    _showTelegramConfigModal(
+                                                      context,
+                                                      assistant.id,
+                                                    );
+                                                    break;
+                                                }
+                                              },
+                                              itemBuilder:
+                                                  (BuildContext context) => [
+                                                    PopupMenuItem<String>(
+                                                      value: 'Slack',
+                                                      child: Row(
+                                                        children: [
+                                                          Container(
+                                                            padding:
+                                                                const EdgeInsets.all(
+                                                                  6,
+                                                                ),
+                                                            decoration: BoxDecoration(
+                                                              color:
+                                                                  const Color(
+                                                                    0xFFE01E5A,
+                                                                  ).withOpacity(
+                                                                    0.1,
+                                                                  ),
+                                                              borderRadius:
+                                                                  BorderRadius.circular(
+                                                                    8,
+                                                                  ),
+                                                            ),
+                                                            child: const Icon(
+                                                              Icons
+                                                                  .workspaces_filled,
+                                                              color: Color(
+                                                                0xFFE01E5A,
+                                                              ),
+                                                              size: 18,
+                                                            ),
+                                                          ),
+                                                          const SizedBox(
+                                                            width: 12,
+                                                          ),
+                                                          const Text(
+                                                            'Publish on Slack',
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                    PopupMenuItem<String>(
+                                                      value: 'Messenger',
+                                                      child: Row(
+                                                        children: [
+                                                          Container(
+                                                            padding:
+                                                                const EdgeInsets.all(
+                                                                  6,
+                                                                ),
+                                                            decoration: BoxDecoration(
+                                                              color:
+                                                                  const Color(
+                                                                    0xFF0078FF,
+                                                                  ).withOpacity(
+                                                                    0.1,
+                                                                  ),
+                                                              borderRadius:
+                                                                  BorderRadius.circular(
+                                                                    8,
+                                                                  ),
+                                                            ),
+                                                            child: const Icon(
+                                                              Icons
+                                                                  .messenger_outline_rounded,
+                                                              color: Color(
+                                                                0xFF0078FF,
+                                                              ),
+                                                              size: 18,
+                                                            ),
+                                                          ),
+                                                          const SizedBox(
+                                                            width: 12,
+                                                          ),
+                                                          const Text(
+                                                            'Messenger',
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                    PopupMenuItem<String>(
+                                                      value: 'Telegram',
+                                                      child: Row(
+                                                        children: [
+                                                          Container(
+                                                            padding:
+                                                                const EdgeInsets.all(
+                                                                  6,
+                                                                ),
+                                                            decoration: BoxDecoration(
+                                                              color:
+                                                                  const Color(
+                                                                    0xFF0088CC,
+                                                                  ).withOpacity(
+                                                                    0.1,
+                                                                  ),
+                                                              borderRadius:
+                                                                  BorderRadius.circular(
+                                                                    8,
+                                                                  ),
+                                                            ),
+                                                            child: const Icon(
+                                                              Icons
+                                                                  .telegram_rounded,
+                                                              color: Color(
+                                                                0xFF0088CC,
+                                                              ),
+                                                              size: 18,
+                                                            ),
+                                                          ),
+                                                          const SizedBox(
+                                                            width: 12,
+                                                          ),
+                                                          const Text(
+                                                            'Telegram',
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  ],
+                                            ),
                                             // Chat button
                                             IconButton(
                                               icon: const Icon(
@@ -911,6 +1070,784 @@ class _AssistantScreenState extends State<AssistantScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  void _showTelegramConfigModal(BuildContext context, String assistantId) {
+    final TextEditingController botTokenController = TextEditingController();
+
+    // Add listener to controller to enable/disable button
+    ValueNotifier<bool> isFormValid = ValueNotifier<bool>(false);
+
+    void validateForm() {
+      isFormValid.value = botTokenController.text.trim().isNotEmpty;
+    }
+
+    botTokenController.addListener(validateForm);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder:
+          (context) => Container(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+            ),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header with Telegram icon
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0088CC).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.telegram_rounded,
+                          color: Color(0xFF0088CC),
+                          size: 28,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      const Expanded(
+                        child: Text(
+                          'Publish to Telegram',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Bot Token field
+                  const Text(
+                    'Bot Token',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: botTokenController,
+                    decoration: InputDecoration(
+                      hintText: 'Enter your Telegram bot token',
+                      prefixIcon: Icon(
+                        Icons.key_rounded,
+                        color: Colors.grey[600],
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey[300]!),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey[300]!),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFF0088CC)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Submit button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ValueListenableBuilder<bool>(
+                      valueListenable: isFormValid,
+                      builder: (context, isValid, _) {
+                        return ElevatedButton(
+                          onPressed:
+                              isValid
+                                  ? () async {
+                                    // Show loading indicator
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Publishing to Telegram...',
+                                        ),
+                                      ),
+                                    );
+
+                                    // Call the API to publish the bot
+                                    final knowledgeService = KnowledgeService();
+                                    final result = await knowledgeService
+                                        .publishTelegramBot(
+                                          assistantId: assistantId,
+                                          botToken:
+                                              botTokenController.text.trim(),
+                                        );
+
+                                    // Close the modal
+                                    Navigator.pop(context);
+
+                                    // Show success or error message
+                                    if (result['success'] == true) {
+                                      final String redirectUrl =
+                                          result['redirect'] ?? '';
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              const Text(
+                                                'Successfully published to Telegram',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              if (redirectUrl.isNotEmpty) ...[
+                                                const SizedBox(height: 4),
+                                                GestureDetector(
+                                                  onTap: () async {
+                                                    final Uri url = Uri.parse(
+                                                      redirectUrl,
+                                                    );
+                                                    if (await canLaunchUrl(
+                                                      url,
+                                                    )) {
+                                                      await launchUrl(url);
+                                                    }
+                                                  },
+                                                  child: Text(
+                                                    'Bot URL: $redirectUrl',
+                                                    style: const TextStyle(
+                                                      decoration:
+                                                          TextDecoration
+                                                              .underline,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+                                          backgroundColor: Colors.green,
+                                          duration: const Duration(seconds: 5),
+                                        ),
+                                      );
+                                    } else {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Failed to publish to Telegram',
+                                          ),
+                                          backgroundColor: Colors.red,
+                                          duration: Duration(seconds: 3),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                  : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF0088CC),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 0,
+                            disabledBackgroundColor: const Color(
+                              0xFF0088CC,
+                            ).withOpacity(0.3),
+                            disabledForegroundColor: Colors.white70,
+                          ),
+                          child: const Text(
+                            'Publish',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+    );
+  }
+
+  void _showMessengerConfigModal(BuildContext context, String assistantId) {
+    final TextEditingController botTokenController = TextEditingController();
+    final TextEditingController pageIdController = TextEditingController();
+    final TextEditingController appSecretController = TextEditingController();
+
+    // Add listeners to controllers to enable/disable button
+    ValueNotifier<bool> isFormValid = ValueNotifier<bool>(false);
+
+    void validateForm() {
+      isFormValid.value =
+          botTokenController.text.trim().isNotEmpty &&
+          pageIdController.text.trim().isNotEmpty &&
+          appSecretController.text.trim().isNotEmpty;
+    }
+
+    botTokenController.addListener(validateForm);
+    pageIdController.addListener(validateForm);
+    appSecretController.addListener(validateForm);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder:
+          (context) => Container(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+            ),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header with Messenger icon
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0078FF).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.messenger_outline_rounded,
+                          color: Color(0xFF0078FF),
+                          size: 28,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      const Expanded(
+                        child: Text(
+                          'Publish to Messenger',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Form fields
+                  const Text(
+                    'Bot Token',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: botTokenController,
+                    decoration: InputDecoration(
+                      hintText: 'Enter your Messenger bot token',
+                      prefixIcon: Icon(
+                        Icons.key_rounded,
+                        color: Colors.grey[600],
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey[300]!),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey[300]!),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFF0078FF)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  const Text(
+                    'Page ID',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: pageIdController,
+                    decoration: InputDecoration(
+                      hintText: 'Enter your Facebook Page ID',
+                      prefixIcon: Icon(
+                        Icons.pages_rounded,
+                        color: Colors.grey[600],
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey[300]!),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey[300]!),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFF0078FF)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  const Text(
+                    'App Secret',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: appSecretController,
+                    obscureText: true,
+                    decoration: InputDecoration(
+                      hintText: 'Enter your app secret',
+                      prefixIcon: Icon(
+                        Icons.security_rounded,
+                        color: Colors.grey[600],
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey[300]!),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey[300]!),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFF0078FF)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Submit button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ValueListenableBuilder<bool>(
+                      valueListenable: isFormValid,
+                      builder: (context, isValid, _) {
+                        return ElevatedButton(
+                          onPressed:
+                              isValid
+                                  ? () async {
+                                    // Show loading indicator
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Publishing to Messenger...',
+                                        ),
+                                      ),
+                                    );
+
+                                    // Call the API to publish the bot
+                                    final knowledgeService = KnowledgeService();
+                                    final result = await knowledgeService
+                                        .publishMessengerBot(
+                                          assistantId: assistantId,
+                                          botToken:
+                                              botTokenController.text.trim(),
+                                          pageId: pageIdController.text.trim(),
+                                          appSecret:
+                                              appSecretController.text.trim(),
+                                        );
+
+                                    // Close the modal
+                                    Navigator.pop(context);
+
+                                    // Show success or error message
+                                    if (result['success'] == true) {
+                                      final String redirectUrl =
+                                          result['redirect'] ?? '';
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              const Text(
+                                                'Successfully published to Messenger',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              if (redirectUrl.isNotEmpty) ...[
+                                                const SizedBox(height: 4),
+                                                GestureDetector(
+                                                  onTap: () async {
+                                                    final Uri url = Uri.parse(
+                                                      redirectUrl,
+                                                    );
+                                                    if (await canLaunchUrl(
+                                                      url,
+                                                    )) {
+                                                      await launchUrl(url);
+                                                    }
+                                                  },
+                                                  child: Text(
+                                                    'Bot URL: $redirectUrl',
+                                                    style: const TextStyle(
+                                                      decoration:
+                                                          TextDecoration
+                                                              .underline,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+                                          backgroundColor: Colors.green,
+                                          duration: const Duration(seconds: 5),
+                                        ),
+                                      );
+                                    } else {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Failed to publish to Messenger',
+                                          ),
+                                          backgroundColor: Colors.red,
+                                          duration: Duration(seconds: 3),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                  : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF0078FF),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 0,
+                            disabledBackgroundColor: const Color(
+                              0xFF0078FF,
+                            ).withOpacity(0.3),
+                            disabledForegroundColor: Colors.white70,
+                          ),
+                          child: const Text(
+                            'Publish',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+    );
+  }
+
+  void _showSlackConfigModal(BuildContext context, String assistantId) {
+    final TextEditingController botTokenController = TextEditingController();
+    final TextEditingController clientIdController = TextEditingController();
+    final TextEditingController clientSecretController =
+        TextEditingController();
+    final TextEditingController signingSecretController =
+        TextEditingController();
+
+    // Add listeners to controllers to enable/disable button
+    ValueNotifier<bool> isFormValid = ValueNotifier<bool>(false);
+
+    void validateForm() {
+      isFormValid.value =
+          botTokenController.text.trim().isNotEmpty &&
+          clientIdController.text.trim().isNotEmpty &&
+          clientSecretController.text.trim().isNotEmpty &&
+          signingSecretController.text.trim().isNotEmpty;
+    }
+
+    botTokenController.addListener(validateForm);
+    clientIdController.addListener(validateForm);
+    clientSecretController.addListener(validateForm);
+    signingSecretController.addListener(validateForm);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder:
+          (context) => Container(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+            ),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header with Slack icon
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE01E5A).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.diversity_3,
+                            color: Color(0xFFE01E5A),
+                            size: 28,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        const Expanded(
+                          child: Text(
+                            'Publish to Slack',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Form fields
+                    const Text(
+                      'Bot Token',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: botTokenController,
+                      decoration: InputDecoration(
+                        hintText: 'Enter your Slack bot token',
+                        prefixIcon: Icon(
+                          Icons.key_rounded,
+                          color: Colors.grey[600],
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey[300]!),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey[300]!),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFE01E5A),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    const Text(
+                      'Client ID',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: clientIdController,
+                      decoration: InputDecoration(
+                        hintText: 'Enter your Slack client ID',
+                        prefixIcon: Icon(
+                          Icons.app_registration_rounded,
+                          color: Colors.grey[600],
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey[300]!),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey[300]!),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFE01E5A),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    const Text(
+                      'Client Secret',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: clientSecretController,
+                      obscureText: true,
+                      decoration: InputDecoration(
+                        hintText: 'Enter your Slack client secret',
+                        prefixIcon: Icon(
+                          Icons.vpn_key_rounded,
+                          color: Colors.grey[600],
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey[300]!),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey[300]!),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFE01E5A),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    const Text(
+                      'Signing Secret',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: signingSecretController,
+                      obscureText: true,
+                      decoration: InputDecoration(
+                        hintText: 'Enter your Slack signing secret',
+                        prefixIcon: Icon(
+                          Icons.security_rounded,
+                          color: Colors.grey[600],
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey[300]!),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey[300]!),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFE01E5A),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Submit button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ValueListenableBuilder<bool>(
+                        valueListenable: isFormValid,
+                        builder: (context, isValid, _) {
+                          return ElevatedButton(
+                            onPressed:
+                                isValid
+                                    ? () {
+                                      // Process the submission
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Publishing to Slack...',
+                                          ),
+                                        ),
+                                      );
+                                      Navigator.pop(context);
+                                    }
+                                    : null,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFE01E5A),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 0,
+                              disabledBackgroundColor: const Color(
+                                0xFFE01E5A,
+                              ).withOpacity(0.3),
+                              disabledForegroundColor: Colors.white70,
+                            ),
+                            child: const Text(
+                              'Publish',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
     );
   }
 }

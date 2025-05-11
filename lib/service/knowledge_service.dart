@@ -397,4 +397,74 @@ class KnowledgeService {
       return false;
     }
   }
+
+  Future<Map<String, dynamic>> publishTelegramBot({
+    required String assistantId,
+    required String botToken,
+  }) async {
+    try {
+      final response = await DioClients.kbClient.post(
+        '/kb-core/v1/bot-integration/telegram/publish/$assistantId',
+        data: {'botToken': botToken},
+        options: Options(headers: {'Content-Type': 'application/json'}),
+      );
+
+      debugPrint(
+        'KnowledgeService: Publish Telegram bot response: ${response}',
+      );
+
+      debugPrint(
+        'KnowledgeService: Publish Telegram bot response status: ${response.statusCode}',
+      );
+      debugPrint(
+        'KnowledgeService: Publish Telegram bot response: ${response.data}',
+      );
+
+      // Return success status and redirect URL
+      return {
+        'success': true,
+        'redirect': response.data['redirect'] as String? ?? '',
+      };
+    } on DioException catch (e) {
+      debugPrint('KnowledgeService: Error publishing Telegram bot: ${e}');
+      debugPrint(
+        'KnowledgeService: Error publishing Telegram bot: ${e.response?.data ?? e.message}',
+      );
+      return {'success': false, 'redirect': ''};
+    }
+  }
+
+  Future<Map<String, dynamic>> publishMessengerBot({
+    required String assistantId,
+    required String botToken,
+    required String pageId,
+    required String appSecret,
+  }) async {
+    try {
+      final response = await DioClients.kbClient.post(
+        '/kb-core/v1/bot-integration/messenger/publish/$assistantId',
+        data: {'botToken': botToken, 'pageId': pageId, 'appSecret': appSecret},
+        options: Options(headers: {'Content-Type': 'application/json'}),
+      );
+
+      debugPrint(
+        'KnowledgeService: Publish Messenger bot response status: ${response.statusCode}',
+      );
+      debugPrint(
+        'KnowledgeService: Publish Messenger bot response: ${response.data}',
+      );
+
+      // Return success status and redirect URL if available
+      return {
+        'success': true,
+        'redirect': response.data['redirect'] as String? ?? '',
+      };
+    } on DioException catch (e) {
+      debugPrint('KnowledgeService: Error publishing Messenger bot: ${e}');
+      debugPrint(
+        'KnowledgeService: Error publishing Messenger bot: ${e.response?.data ?? e.message}',
+      );
+      return {'success': false, 'redirect': ''};
+    }
+  }
 }
