@@ -467,4 +467,44 @@ class KnowledgeService {
       return {'success': false, 'redirect': ''};
     }
   }
+
+  Future<Map<String, dynamic>> publishSlackBot({
+    required String assistantId,
+    required String botToken,
+    required String clientId,
+    required String clientSecret,
+    required String signingSecret,
+  }) async {
+    try {
+      final response = await DioClients.kbClient.post(
+        '/kb-core/v1/bot-integration/slack/publish/$assistantId',
+        data: {
+          'botToken': botToken,
+          'clientId': clientId,
+          'clientSecret': clientSecret,
+          'signingSecret': signingSecret,
+        },
+        options: Options(headers: {'Content-Type': 'application/json'}),
+      );
+
+      debugPrint(
+        'KnowledgeService: Publish Slack bot response status: ${response.statusCode}',
+      );
+      debugPrint(
+        'KnowledgeService: Publish Slack bot response: ${response.data}',
+      );
+
+      // Return success status and redirect URL if available
+      return {
+        'success': true,
+        'redirect': response.data['redirect'] as String? ?? '',
+      };
+    } on DioException catch (e) {
+      debugPrint('KnowledgeService: Error publishing Slack bot: ${e}');
+      debugPrint(
+        'KnowledgeService: Error publishing Slack bot: ${e.response?.data ?? e.message}',
+      );
+      return {'success': false, 'redirect': ''};
+    }
+  }
 }

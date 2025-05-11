@@ -1805,8 +1805,8 @@ class _AssistantScreenState extends State<AssistantScreen> {
                           return ElevatedButton(
                             onPressed:
                                 isValid
-                                    ? () {
-                                      // Process the submission
+                                    ? () async {
+                                      // Show loading indicator
                                       ScaffoldMessenger.of(
                                         context,
                                       ).showSnackBar(
@@ -1816,7 +1816,91 @@ class _AssistantScreenState extends State<AssistantScreen> {
                                           ),
                                         ),
                                       );
+
+                                      // Call the API to publish the bot
+                                      final knowledgeService =
+                                          KnowledgeService();
+                                      final result = await knowledgeService
+                                          .publishSlackBot(
+                                            assistantId: assistantId,
+                                            botToken:
+                                                botTokenController.text.trim(),
+                                            clientId:
+                                                clientIdController.text.trim(),
+                                            clientSecret:
+                                                clientSecretController.text
+                                                    .trim(),
+                                            signingSecret:
+                                                signingSecretController.text
+                                                    .trim(),
+                                          );
+
+                                      // Close the modal
                                       Navigator.pop(context);
+
+                                      // Show success or error message
+                                      if (result['success'] == true) {
+                                        final String redirectUrl =
+                                            result['redirect'] ?? '';
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                const Text(
+                                                  'Successfully published to Slack',
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                                if (redirectUrl.isNotEmpty) ...[
+                                                  const SizedBox(height: 4),
+                                                  GestureDetector(
+                                                    onTap: () async {
+                                                      final Uri url = Uri.parse(
+                                                        redirectUrl,
+                                                      );
+                                                      if (await canLaunchUrl(
+                                                        url,
+                                                      )) {
+                                                        await launchUrl(url);
+                                                      }
+                                                    },
+                                                    child: Text(
+                                                      'Bot URL: $redirectUrl',
+                                                      style: const TextStyle(
+                                                        decoration:
+                                                            TextDecoration
+                                                                .underline,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ],
+                                            ),
+                                            backgroundColor: Colors.green,
+                                            duration: const Duration(
+                                              seconds: 5,
+                                            ),
+                                          ),
+                                        );
+                                      } else {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              'Failed to publish to Slack',
+                                            ),
+                                            backgroundColor: Colors.red,
+                                            duration: Duration(seconds: 3),
+                                          ),
+                                        );
+                                      }
                                     }
                                     : null,
                             style: ElevatedButton.styleFrom(
