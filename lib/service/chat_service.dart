@@ -1,4 +1,5 @@
 import 'package:amd_chat_ai/config/dio_clients.dart';
+import 'package:amd_chat_ai/model/email_request.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -184,6 +185,174 @@ class ChatAIService {
       return null;
     }
   }
+
+
+  Future<Response?> sendResponseMail({
+    required EmailRequest emailRequest,
+    required String assistantId, // e.g., 'gpt-4o-mini'
+    String? conversationId,
+    String? jarvisGuid,
+    Map<String, dynamic>? metadata,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('access_token');
+      final userId = prefs.getString('user_id');
+
+      // Determine whether this is a predefined model or custom assistant
+      // Predefined models contain a hyphen, custom assistant IDs are typically UUIDs without hyphens
+      final bool isCustomAssistant =
+          !assistantId.startsWith('gpt-') &&
+          !assistantId.startsWith('claude-') &&
+          !assistantId.startsWith('gemini-');
+      final String modelType = isCustomAssistant ? 'knowledge-base' : 'dify';
+
+      // Prepare the request data
+      final Map<String, dynamic> requestData = {
+        // 'assistant': {
+        //   'id': assistantId,
+        //   'model': modelType,
+        //   'name': _getAssistantName(assistantId),
+        // },
+        'email': emailRequest.email,
+        'action': emailRequest.action,
+        'mainIdea': emailRequest.mainIdea,
+        'metadata': {
+          "context": [],
+          'subject': emailRequest.metadata?.subject,
+          'sender': emailRequest.metadata?.sender,
+          'receiver': emailRequest.metadata?.receiver,
+          'language': emailRequest.metadata?.language,
+          'style': {
+            "length": "long",
+            "formality": "neutral",
+            "tone": "friendly",
+          },
+        },
+      };
+
+      // // Handle metadata and conversation ID
+      // if (conversationId != null) {
+      //   // If we have a conversation ID, include it in the metadata
+      //   requestData['metadata'] = {
+      //     'conversation': {'id': conversationId, 'messages': []},
+      //   };
+      // } else {
+      //   // For new conversations, just include empty messages array
+      //   requestData['metadata'] = {
+      //     'conversation': {'messages': []},
+      //   };
+      // }
+
+      // // If additional metadata was provided, merge it
+      // if (metadata != null) {
+      //   // Merge with existing metadata
+      //   final existingMetadata =
+      //       requestData['metadata'] as Map<String, dynamic>;
+      //   requestData['metadata'] = {...existingMetadata, ...metadata};
+      // }
+
+      debugPrint('Sending message with data: $requestData');
+
+      final response = await DioClients.jarvisClient.post(
+        '/api/v1/ai-email',
+        data: requestData,
+        options: Options(
+          headers: {
+            // 'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+
+      debugPrint('Message sent successfully: ${response.statusCode}');
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        debugPrint('Response data: ${response.data}');
+        // If this was a new conversation, save the conversation ID
+        if (conversationId == null && response.data['conversationId'] != null) {
+          debugPrint(
+            'New conversation created with ID: ${response.data['conversationId']}',
+          );
+        }
+      }
+
+      return response;
+    } on DioException catch (e) {
+      debugPrint('Send message error: ${e.response?.data ?? e.message}');
+      return null;
+    }
+  }
+
+  Future<Response?> suggestReplyIdeas({
+    required EmailRequest emailRequest,
+    required String assistantId, // e.g., 'gpt-4o-mini'
+    String? conversationId,
+    String? jarvisGuid,
+    Map<String, dynamic>? metadata,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('access_token');
+      final userId = prefs.getString('user_id');
+
+      // Determine whether this is a predefined model or custom assistant
+      // Predefined models contain a hyphen, custom assistant IDs are typically UUIDs without hyphens
+      final bool isCustomAssistant =
+          !assistantId.startsWith('gpt-') &&
+          !assistantId.startsWith('claude-') &&
+          !assistantId.startsWith('gemini-');
+      final String modelType = isCustomAssistant ? 'knowledge-base' : 'dify';
+
+      // Prepare the request data
+      final Map<String, dynamic> requestData = {
+        // 'assistant': {
+        //   'id': assistantId,
+        //   'model': modelType,
+        //   'name': _getAssistantName(assistantId),
+        // },
+        'email': emailRequest.email,
+        'action': emailRequest.action,
+        'mainIdea': emailRequest.mainIdea,
+        'metadata': {
+          "context": [],
+          'subject': emailRequest.metadata?.subject,
+          'sender': emailRequest.metadata?.sender,
+          'receiver': emailRequest.metadata?.receiver,
+          'language': emailRequest.metadata?.language,
+          'style': {
+            "length": "long",
+            "formality": "neutral",
+            "tone": "friendly",
+          },
+        },
+      };
+
+      debugPrint('Sending message with data: $requestData');
+
+      final response = await DioClients.jarvisClient.post(
+        '/api/v1/ai-email/reply-ideas',
+        data: requestData,
+        options: Options(headers: {'Content-Type': 'application/json'}),
+      );
+
+      debugPrint('Message sent successfully: ${response.statusCode}');
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        debugPrint('Response data: ${response.data}');
+        // If this was a new conversation, save the conversation ID
+        if (conversationId == null && response.data['conversationId'] != null) {
+          debugPrint(
+            'New conversation created with ID: ${response.data['conversationId']}',
+          );
+        }
+      }
+
+      return response;
+    } on DioException catch (e) {
+      debugPrint('Send message error: ${e.response?.data ?? e.message}');
+      return null;
+    }
+  }
+
 
   // Helper method to get assistant name from ID
   String _getAssistantName(String assistantId) {

@@ -1,3 +1,4 @@
+import 'package:amd_chat_ai/model/datasource.dart';
 import 'package:amd_chat_ai/service/knowledge_service.dart';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
@@ -5,15 +6,16 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:amd_chat_ai/presentation/screens/widgets/base_screen.dart';
 import 'package:amd_chat_ai/presentation/screens/widgets/primary_button.dart';
+import 'package:amd_chat_ai/presentation/screens/widgets/file_picker_widget.dart';
 
-class CreateKnowledgeScreen extends StatefulWidget {
-  const CreateKnowledgeScreen({super.key});
+class UpdateKnowledgeScreen extends StatefulWidget {
+  const UpdateKnowledgeScreen({super.key});
 
   @override
-  State<CreateKnowledgeScreen> createState() => _CreateKnowledgeScreenState();
+  State<UpdateKnowledgeScreen> createState() => _UpdateKnowledgeScreenState();
 }
 
-class _CreateKnowledgeScreenState extends State<CreateKnowledgeScreen>
+class _UpdateKnowledgeScreenState extends State<UpdateKnowledgeScreen>
     with SingleTickerProviderStateMixin {
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
@@ -27,9 +29,11 @@ class _CreateKnowledgeScreenState extends State<CreateKnowledgeScreen>
   String? _selectedWebsiteName;
   String? _knowledgeId;
 
-  String? _knowledge_unit_name;
-  String? _confluence_username;
-  String? _confluence_api_token;
+  List<Datasource> _datasourceItems = [];
+  bool _isFetching = false;
+  int _offset = 0;
+  final int _limit = 10;
+  bool _hasNext = true;
 
   @override
   void initState() {
@@ -42,9 +46,15 @@ class _CreateKnowledgeScreenState extends State<CreateKnowledgeScreen>
 
     // Retrieve the ID from the arguments and fetch knowledge details if editing
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final args = ModalRoute.of(context)?.settings.arguments as String?;
-      if (args != null) {
-        _knowledgeId = args;
+      final Map<String, dynamic>? knowledgeData =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+
+      if (knowledgeData != null) {
+        setState(() {
+          _knowledgeId = knowledgeData['id'];
+          _nameController.text = knowledgeData['knowledgeName'];
+          _descriptionController.text = knowledgeData['description'];
+        });
       }
     });
   }
@@ -57,7 +67,7 @@ class _CreateKnowledgeScreenState extends State<CreateKnowledgeScreen>
     super.dispose();
   }
 
-  Future<void> _handleCreateKnowledge() async {
+  Future<void> _handleUpdateKnowledge() async {
     if (_nameController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a knowledge name')),
@@ -77,8 +87,9 @@ class _CreateKnowledgeScreenState extends State<CreateKnowledgeScreen>
     });
 
     try {
-      // Call the createKnowledge function
-      final knowledge = await _knowledgeService.createKnowledge(
+      // Call the updateKnowledge function
+      final knowledge = await _knowledgeService.updateKnowledge(
+        id: _knowledgeId!,
         knowledgeName: _nameController.text.trim(),
         description: _descriptionController.text.trim(),
       );
@@ -86,123 +97,15 @@ class _CreateKnowledgeScreenState extends State<CreateKnowledgeScreen>
       if (knowledge != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'Knowledge "${knowledge.knowledgeName}" created successfully!',
-            ),
+            content: Text('Knowledge "${knowledge}" updated successfully!'),
           ),
         );
-
-        // Get the ID of the created knowledge
-        final String knowledgeId = knowledge.id ?? '';
-
-        if (_selectedFile != null && _selectedFile!['path'] != null) {
-          // Upload the local file
-          final String filePath = _selectedFile!['path'];
-          final responseId = await _knowledgeService.uploadLocalFile(
-            filePath: filePath,
-          );
-
-          if (responseId != null) {
-            // Import the file to the knowledge
-            final success = await _knowledgeService.importDataSourceToKnowledge(
-              id: knowledgeId,
-              fileName: _selectedFile!['name'],
-              fileId: responseId,
-              type: 'file',
-            );
-
-            if (success) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Attached file successfully!')),
-              );
-            } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Failed to upload file. Please try again.'),
-                ),
-              );
-            }
-          }
-        }
-
-        if (_selectedSource == 'Website') {
-          print(
-            'Selected website URL: $_selectedWebsiteName $_selectedWebsiteUrl ',
-          );
-          final success = await _knowledgeService.uploadFromWebsite(
-            id: knowledgeId,
-            webUrl: _selectedWebsiteUrl!,
-            unitName: _selectedWebsiteName!,
-          );
-
-          if (success) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Attached website successfully!')),
-            );
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Failed to upload website. Please try again.'),
-              ),
-            );
-          }
-        }
-
-        if (_selectedSource == 'Slack') {
-          print(
-            'Selected Slack URL: $_selectedWebsiteName $_selectedWebsiteUrl ',
-          );
-          final success = await _knowledgeService.importSlackToKnowledge(
-            id: knowledgeId,
-            apiToken: _confluence_api_token!,
-            knowledgeName: _knowledge_unit_name!,
-          );
-
-          if (success) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Attached Slack successfully!')),
-            );
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Failed to upload Slack. Please try again.'),
-              ),
-            );
-          }
-        }
-
-        if (_selectedSource == 'Confluence') {
-          print(
-            'Selected Confluence URL: $_selectedWebsiteName $_selectedWebsiteUrl ',
-          );
-          final success = await _knowledgeService.importConfluenceToKnowledge(
-            id: knowledgeId,
-            username: _confluence_username!,
-            apiToken: _confluence_api_token!,
-            url: _selectedWebsiteUrl!,
-            knowledgeName: _knowledge_unit_name!,
-          );
-
-          if (success) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Attached Confluence successfully!'),
-              ),
-            );
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Failed to upload Confluence. Please try again.'),
-              ),
-            );
-          }
-        }
 
         Navigator.pop(context);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Failed to create knowledge. Please try again.'),
+            content: Text('Failed to update knowledge. Please try again.'),
           ),
         );
       }
@@ -257,16 +160,10 @@ class _CreateKnowledgeScreenState extends State<CreateKnowledgeScreen>
         'icon': FontAwesomeIcons.slack,
         'avatarColor': Colors.green[100]!,
       },
-      {
-        'title': 'Confluence',
-        'description': 'Import Link Confluence',
-        'icon': FontAwesomeIcons.atlassian,
-        'avatarColor': Colors.yellowAccent[100]!,
-      },
     ];
 
     return BaseScreen(
-      title: _knowledgeId == null ? 'Create Knowledge' : 'Edit Knowledge',
+      title: 'Update Knowledge',
       showBackButton: true,
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
@@ -276,10 +173,10 @@ class _CreateKnowledgeScreenState extends State<CreateKnowledgeScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Knowledge Name
-              _buildSectionTitle('Knowledge Name'),
+              _buildSectionTitle('Name'),
               _buildTextField(
                 controller: _nameController,
-                hintText: 'Enter knowledge name',
+                hintText: 'Enter name',
                 prefixIcon: Icons.bookmark_border_rounded,
                 maxLines: 1,
               ),
@@ -290,76 +187,55 @@ class _CreateKnowledgeScreenState extends State<CreateKnowledgeScreen>
               _buildSectionTitle('Description'),
               _buildTextField(
                 controller: _descriptionController,
-                hintText: 'Describe your knowledge resource...',
+                hintText: 'Describe knowledge ...',
                 prefixIcon: Icons.description_outlined,
                 maxLines: 5,
               ),
 
               const SizedBox(height: 24),
 
-              // Import Knowledge - Replace the dropdown with a button
-              _buildSectionTitle('Import Knowledge'),
+              // _buildSectionTitle('Data Source'),
               InkWell(
-                onTap: () => _showSourceSelectionDialog(context, sources),
-                child: Container(
-                  height: 60,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withAlpha(13),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
+                onTap: () {
+                  Navigator.pushNamed(
+                    context,
+                    '/datasource',
+                    arguments: {'knowledgeId': _knowledgeId},
+                  );
+                },
+                child: SizedBox(
+                  width: double.infinity,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 16,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.blue,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      'View Data Sources',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
                       ),
-                    ],
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.source_outlined,
-                        color: Colors.grey[600],
-                        size: 22,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          _selectedSource ?? 'Select Source',
-                          style: TextStyle(
-                            color:
-                                _selectedSource != null
-                                    ? Colors.black
-                                    : Colors.grey,
-                            fontSize: 16,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Icon(Icons.arrow_drop_down, color: Colors.grey[600]),
-                    ],
+                      textAlign:
+                          TextAlign.center,
+                    ),
                   ),
                 ),
               ),
 
-              // Selected file or website display
-              if (_selectedSource == 'Local files')
-                _buildSelectedFile()
-              else if (_selectedSource == 'Website')
-                _buildSelectedWebsite(),
-
               const SizedBox(height: 48),
 
-              // Create Button
+              // Update Button
               _isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : PrimaryButton(
-                    label:
-                        _knowledgeId == null
-                            ? 'Create Knowledge'
-                            : 'Update Knowledge',
-                    onPressed: _handleCreateKnowledge,
+                    label: 'Update Knowledge',
+                    onPressed: _handleUpdateKnowledge,
                   ),
 
               const SizedBox(height: 24),
@@ -371,7 +247,7 @@ class _CreateKnowledgeScreenState extends State<CreateKnowledgeScreen>
   }
 
   // Update the file upload dialog
-void _showFileUploadDialog(BuildContext context) async {
+  void _showFileUploadDialog(BuildContext context) async {
     final result = await FilePicker.platform.pickFiles();
 
     if (result != null && result.files.single.path != null) {
@@ -459,157 +335,6 @@ void _showFileUploadDialog(BuildContext context) async {
     );
   }
 
-  void _showSlackDialog(BuildContext context) {
-    final nameController = TextEditingController();
-    final apiTokenController = TextEditingController();
-
-    bool isValidUrl(String url) {
-      try {
-        final uri = Uri.parse(url);
-        return uri.hasScheme && uri.host.isNotEmpty;
-      } catch (e) {
-        return false;
-      }
-    }
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            // bool isValid = isValidUrl(linkController.text);
-
-            // // Add listener to update button state
-            // linkController.addListener(() {
-            //   setDialogState(() {});
-            // });
-
-            return Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Container(
-                padding: const EdgeInsets.all(24),
-                width: double.infinity,
-                constraints: const BoxConstraints(maxWidth: 400),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Header with avatars
-                    CircleAvatar(
-                      backgroundColor: Colors.purple[100],
-                      radius: 30,
-                      child: const Icon(
-                        Icons.language_outlined,
-                        color: Colors.white,
-                        size: 30,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    TextField(
-                      controller: nameController,
-                      decoration: InputDecoration(
-                        labelText: 'Name',
-                        hintText: 'Enter your knowledge unit name',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        suffixIcon: IconButton(
-                          icon: const Icon(Icons.content_paste),
-                          onPressed: () {
-                            // Handle paste functionality
-                          },
-                          constraints: const BoxConstraints(),
-                          padding: const EdgeInsets.all(8),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    TextField(
-                      controller: apiTokenController,
-                      decoration: InputDecoration(
-                        labelText: 'Slack Bot Token',
-                        hintText: 'Enter your Slack bot token',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        suffixIcon: IconButton(
-                          icon: const Icon(Icons.content_paste),
-                          onPressed: () {
-                            // Handle paste functionality
-                          },
-                          constraints: const BoxConstraints(),
-                          padding: const EdgeInsets.all(8),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Confirm button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          setState(() {
-                            _selectedSource = 'Slack';
-                            _knowledge_unit_name = nameController.text;
-                            _confluence_api_token = apiTokenController.text;
-                          });
-                          Navigator.pop(context);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF415DF2),
-                          disabledBackgroundColor: Colors.grey[300],
-                          foregroundColor: Colors.white,
-                          disabledForegroundColor: Colors.grey[500],
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: const Text(
-                          'Confirm',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Cancel button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: TextButton.styleFrom(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            side: BorderSide(color: Colors.grey[300]!),
-                          ),
-                        ),
-                        child: const Text(
-                          'Cancel',
-                          style: TextStyle(color: Colors.black87),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-
   // Add this widget to display selected website
   Widget _buildSelectedWebsite() {
     if (_selectedWebsiteUrl == null) return const SizedBox.shrink();
@@ -664,6 +389,7 @@ void _showFileUploadDialog(BuildContext context) async {
     );
   }
 
+  // Also update the source selection dialog to fix potential overflow
   void _showSourceSelectionDialog(
     BuildContext context,
     List<Map<String, dynamic>> sources,
@@ -688,6 +414,7 @@ void _showFileUploadDialog(BuildContext context) async {
                     child: Stack(
                       alignment: Alignment.center,
                       children: [
+                        // Fix potential overflow by limiting the number of avatars
                         for (int i = 0; i < 3 && i < sources.length; i++)
                           Positioned(
                             left: 80 + (i * 20),
@@ -733,15 +460,7 @@ void _showFileUploadDialog(BuildContext context) async {
                       } else if (i == 1) {
                         // Website
                         _showWebsiteDialog(context);
-                      } else if (i == 3) {
-                        // Website
-                        _showSlackDialog(context);
-                      } else if (i == 4) {
-                        // Website
-                        _showConfluenceDialog(context);
-                      }
-                      // _showConfluenceDialog
-                      else {
+                      } else {
                         // For other options, you could navigate to different screens
                         debugPrint("Selected source: ${sources[i]['title']}");
                         // Navigator.of(context).pushNamed('/next-screen', arguments: sources[i]);
@@ -838,7 +557,7 @@ void _showFileUploadDialog(BuildContext context) async {
   void _showWebsiteDialog(BuildContext context) {
     final linkController = TextEditingController();
     final nameController =
-        TextEditingController();
+        TextEditingController(); // Controller for website name
 
     bool isValidUrl(String url) {
       try {
@@ -997,199 +716,6 @@ void _showFileUploadDialog(BuildContext context) async {
       },
     );
   }
-
-  void _showConfluenceDialog(BuildContext context) {
-    final linkController = TextEditingController();
-    final nameController = TextEditingController();
-    final usernameController = TextEditingController();
-    final apiTokenController = TextEditingController();
-
-    bool isValidUrl(String url) {
-      try {
-        final uri = Uri.parse(url);
-        return uri.hasScheme && uri.host.isNotEmpty;
-      } catch (e) {
-        return false;
-      }
-    }
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            bool isValid = isValidUrl(linkController.text);
-
-            // Add listener to update button state
-            linkController.addListener(() {
-              setDialogState(() {});
-            });
-
-            return Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Container(
-                padding: const EdgeInsets.all(24),
-                width: double.infinity,
-                constraints: const BoxConstraints(maxWidth: 400),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Header with avatars
-                    CircleAvatar(
-                      backgroundColor: Colors.purple[100],
-                      radius: 30,
-                      child: const Icon(
-                        Icons.language_outlined,
-                        color: Colors.white,
-                        size: 30,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Title
-                    const Text(
-                      'Confluence',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Import Link Website',
-                      style: TextStyle(color: Colors.grey, fontSize: 14),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Website name input field
-                    TextField(
-                      controller: nameController,
-                      decoration: InputDecoration(
-                        labelText: 'Name',
-                        hintText: 'Enter knowledge unit name',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    TextField(
-                      controller: linkController,
-                      decoration: InputDecoration(
-                        labelText: 'Wiki Page URL',
-                        hintText: 'hpps://wiki.example.com/page',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    TextField(
-                      controller: usernameController,
-                      decoration: InputDecoration(
-                        labelText: 'Username',
-                        hintText: 'Enter your Confluence username',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Link input field
-                    TextField(
-                      controller: apiTokenController,
-                      decoration: InputDecoration(
-                        labelText: 'API Token',
-                        hintText: 'Enter your Confluence API token',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        suffixIcon: IconButton(
-                          icon: const Icon(Icons.content_paste),
-                          onPressed: () {
-                            // Handle paste functionality
-                          },
-                          constraints: const BoxConstraints(),
-                          padding: const EdgeInsets.all(8),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Confirm button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: ElevatedButton(
-                        onPressed:
-                            isValid
-                                ? () {
-                                  setState(() {
-                                    _selectedSource = 'Confluence';
-                                    _knowledge_unit_name = nameController.text;
-                                    _confluence_username =
-                                        usernameController.text;
-                                    _confluence_api_token =
-                                        apiTokenController.text;
-                                    _selectedWebsiteUrl = linkController.text;
-                                  });
-                                  Navigator.pop(context);
-                                }
-                                : null,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF415DF2),
-                          disabledBackgroundColor: Colors.grey[300],
-                          foregroundColor: Colors.white,
-                          disabledForegroundColor: Colors.grey[500],
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: const Text(
-                          'Confirm',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Cancel button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: TextButton.styleFrom(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            side: BorderSide(color: Colors.grey[300]!),
-                          ),
-                        ),
-                        child: const Text(
-                          'Cancel',
-                          style: TextStyle(color: Colors.black87),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
 
   Widget _buildSectionTitle(String title) {
     return Padding(
