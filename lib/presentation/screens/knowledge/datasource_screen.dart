@@ -29,10 +29,7 @@ class _DatasourceScreenState extends State<DatasourceScreen> {
   String? _confluence_username;
   String? _confluence_api_token;
   String? _selected_datasource_id_delete;
-
-  final TextEditingController _searchController = TextEditingController();
-
-  // Category filter
+  bool _isUploading = false;
 
   final PromptService _promptService = PromptService();
   final KnowledgeService _knowledgeService = KnowledgeService();
@@ -75,7 +72,6 @@ class _DatasourceScreenState extends State<DatasourceScreen> {
 
   @override
   void dispose() {
-    _searchController.dispose();
     _screenFocusNode.dispose();
     super.dispose();
   }
@@ -97,16 +93,6 @@ class _DatasourceScreenState extends State<DatasourceScreen> {
 
     // User is logged in, load prompts
     _loadDatasources();
-  }
-
-  void _handleSearchChanged(String value) {
-    // Debounce search to avoid too many API calls
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (_searchController.text == value) {
-        debugPrint('Search query: $value');
-        _loadDatasources(refresh: true);
-      }
-    });
   }
 
   Future<void> _loadDatasources({bool refresh = false}) async {
@@ -131,12 +117,11 @@ class _DatasourceScreenState extends State<DatasourceScreen> {
       debugPrint(
         "Making API call to fetch prompts with offset: $_currentOffset",
       );
-      final searchQuery = _searchController.text.trim();
       final response = await _knowledgeService.getDatasources(
         offset: _currentOffset,
         limit: 5,
         id: _knowledgeId ?? '',
-        q: searchQuery,
+        q: '',
       );
 
       debugPrint("API call completed, response: ${response?.data} items");
@@ -554,73 +539,89 @@ class _DatasourceScreenState extends State<DatasourceScreen> {
   }
 
   Future<void> _handleUploadFileToKnowledge() async {
-    if (_selectedFile != null && _selectedFile!['path'] != null) {
-      // Upload the local file
-      final String filePath = _selectedFile!['path'];
-      final responseId = await _knowledgeService.uploadLocalFile(
-        filePath: filePath,
-      );
+    if (_isUploading) return; // Prevent multiple uploads
 
-      print('Selected file: ${_selectedFile!['name']} - ID: $responseId');
+    setState(() {
+      _isUploading = true;
+    });
 
-      if (responseId != null) {
-        // Import the file to the knowledge
-        final success = await _knowledgeService.importDataSourceToKnowledge(
+    try {
+      if (_selectedFile != null && _selectedFile!['path'] != null) {
+        // Upload the local file
+        final String filePath = _selectedFile!['path'];
+        final responseId = await _knowledgeService.uploadLocalFile(
+          filePath: filePath,
+        );
+
+        print('Selected file: ${_selectedFile!['name']} - ID: $responseId');
+
+        if (responseId != null) {
+          // Import the file to the knowledge
+          final success = await _knowledgeService.importDataSourceToKnowledge(
+            id: _knowledgeId!,
+            fileName: _selectedFile!['name'],
+            fileId: responseId,
+            type: 'file',
+          );
+
+          if (success) {
+            setState(() {
+              _selectedFile = null;
+              _selectedSource = null;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Attached file successfully!')),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Failed to upload file. Please try again.'),
+              ),
+            );
+          }
+        }
+      }
+
+      if (_selectedWebsiteUrl != null) {
+        print(
+          'Selected website URL: $_selectedWebsiteName $_selectedWebsiteUrl ',
+        );
+        final success = await _knowledgeService.uploadFromWebsite(
           id: _knowledgeId!,
-          fileName: _selectedFile!['name'],
-          fileId: responseId,
-          type: 'file',
+          webUrl: _selectedWebsiteUrl!,
+          unitName: _selectedWebsiteName!,
         );
 
         if (success) {
           setState(() {
-            _selectedFile = null;
+            _selectedWebsiteUrl = null;
+            _selectedWebsiteName = null;
             _selectedSource = null;
           });
+
+          // Show success message
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Attached file successfully!')),
+            const SnackBar(content: Text('Attached website successfully!')),
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Failed to upload file. Please try again.'),
+              content: Text('Failed to upload website. Please try again.'),
             ),
           );
         }
       }
-    }
 
-    if (_selectedWebsiteUrl != null) {
-      print(
-        'Selected website URL: $_selectedWebsiteName $_selectedWebsiteUrl ',
+      _loadDatasources(refresh: true);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error uploading: ${e.toString()}')),
       );
-      final success = await _knowledgeService.uploadFromWebsite(
-        id: _knowledgeId!,
-        webUrl: _selectedWebsiteUrl!,
-        unitName: _selectedWebsiteName!,
-      );
-
-      if (success) {
-        setState(() {
-          _selectedWebsiteUrl = null;
-          _selectedWebsiteName = null;
-          _selectedSource = null;
-        });
-
-        // Show success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Attached website successfully!')),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to upload website. Please try again.'),
-          ),
-        );
-      }
+    } finally {
+      setState(() {
+        _isUploading = false;
+      });
     }
-
-    _loadDatasources(refresh: true);
   }
 
   Widget _buildSelectedFile() {
@@ -677,11 +678,14 @@ class _DatasourceScreenState extends State<DatasourceScreen> {
               ),
               IconButton(
                 icon: const Icon(Icons.close),
-                onPressed: () {
-                  setState(() {
-                    _selectedFile = null;
-                  });
-                },
+                onPressed:
+                    _isUploading
+                        ? null
+                        : () {
+                          setState(() {
+                            _selectedFile = null;
+                          });
+                        },
                 color: Colors.grey[400],
                 constraints: const BoxConstraints(),
                 padding: const EdgeInsets.all(8),
@@ -693,20 +697,45 @@ class _DatasourceScreenState extends State<DatasourceScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () {
-                _handleUploadFileToKnowledge();
-              },
+              onPressed: _isUploading ? null : _handleUploadFileToKnowledge,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
+                disabledBackgroundColor: Colors.grey[400],
               ),
-              child: const Text(
-                'Confirm',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
+              child:
+                  _isUploading
+                      ? Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2.0,
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            'Uploading...',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      )
+                      : const Text(
+                        'Confirm',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
             ),
           ),
         ],
@@ -933,12 +962,27 @@ class _DatasourceScreenState extends State<DatasourceScreen> {
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            bool isValid = isValidUrl(linkController.text);
+            // Check if all required fields are filled
+            bool isFormValid() {
+              return nameController.text.isNotEmpty &&
+                  isValidUrl(linkController.text) &&
+                  usernameController.text.isNotEmpty &&
+                  apiTokenController.text.isNotEmpty;
+            }
 
-            // Add listener to update button state
-            linkController.addListener(() {
-              setDialogState(() {});
-            });
+            bool isValid = isFormValid();
+
+            // Add listeners to update button state
+            void updateFormValidity() {
+              setDialogState(() {
+                isValid = isFormValid();
+              });
+            }
+
+            linkController.addListener(updateFormValidity);
+            nameController.addListener(updateFormValidity);
+            usernameController.addListener(updateFormValidity);
+            apiTokenController.addListener(updateFormValidity);
 
             return Dialog(
               shape: RoundedRectangleBorder(
@@ -982,7 +1026,7 @@ class _DatasourceScreenState extends State<DatasourceScreen> {
                     TextField(
                       controller: nameController,
                       decoration: InputDecoration(
-                        labelText: 'Name',
+                        labelText: 'Name *',
                         hintText: 'Enter knowledge unit name',
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -994,8 +1038,8 @@ class _DatasourceScreenState extends State<DatasourceScreen> {
                     TextField(
                       controller: linkController,
                       decoration: InputDecoration(
-                        labelText: 'Wiki Page URL',
-                        hintText: 'hpps://wiki.example.com/page',
+                        labelText: 'Wiki Page URL *',
+                        hintText: 'https://wiki.example.com/page',
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -1006,7 +1050,7 @@ class _DatasourceScreenState extends State<DatasourceScreen> {
                     TextField(
                       controller: usernameController,
                       decoration: InputDecoration(
-                        labelText: 'Username',
+                        labelText: 'Username *',
                         hintText: 'Enter your Confluence username',
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -1019,7 +1063,7 @@ class _DatasourceScreenState extends State<DatasourceScreen> {
                     TextField(
                       controller: apiTokenController,
                       decoration: InputDecoration(
-                        labelText: 'API Token',
+                        labelText: 'API Token *',
                         hintText: 'Enter your Confluence API token',
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -1041,45 +1085,36 @@ class _DatasourceScreenState extends State<DatasourceScreen> {
                       width: double.infinity,
                       height: 48,
                       child: ElevatedButton(
-                        onPressed: () async {
-                          var response = await _knowledgeService
-                              .importConfluenceToKnowledge(
-                                id: _knowledgeId!,
-                                url: linkController.text,
-                                knowledgeName: nameController.text,
-                                username: usernameController.text,
-                                apiToken: apiTokenController.text,
-                              );
+                        onPressed:
+                            isValid
+                                ? () async {
+                                  var response = await _knowledgeService
+                                      .importConfluenceToKnowledge(
+                                        id: _knowledgeId!,
+                                        url: linkController.text,
+                                        knowledgeName: nameController.text,
+                                        username: usernameController.text,
+                                        apiToken: apiTokenController.text,
+                                      );
 
-                          if (response) {
-                            setState(() {
-                              // Clear the selected file and source
-                              _selectedFile = null;
-                              _selectedSource = null;
-                            });
-                            Navigator.pop(context);
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Failed to upload website.'),
-                              ),
-                            );
-                          }
-                        },
-                        // isValid
-                        //     ? () {
-                        //       setState(() {
-                        //         _selectedSource = 'Confluence';
-                        //         _knowledge_unit_name = nameController.text;
-                        //         _confluence_username =
-                        //             usernameController.text;
-                        //         _confluence_api_token =
-                        //             apiTokenController.text;
-                        //         _selectedWebsiteUrl = linkController.text;
-                        //       });
-                        //       Navigator.pop(context);
-                        //     }
-                        //     : null,
+                                  if (response) {
+                                    setState(() {
+                                      // Clear the selected file and source
+                                      _selectedFile = null;
+                                      _selectedSource = null;
+                                    });
+                                    Navigator.pop(context);
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Failed to upload website.',
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                }
+                                : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF415DF2),
                           disabledBackgroundColor: Colors.grey[300],
@@ -1576,33 +1611,6 @@ class _DatasourceScreenState extends State<DatasourceScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: Column(
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _searchController,
-                      onChanged: _handleSearchChanged,
-                      decoration: const InputDecoration(
-                        hintText: 'Search Source',
-                        prefixIcon: Icon(Icons.search, color: Colors.grey),
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(vertical: 12),
-                        filled: true,
-                        fillColor: Color(0xFFF5F5F5),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(12)),
-                          borderSide: BorderSide.none,
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(12)),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                ],
-              ),
               const SizedBox(height: 16),
 
               // Knowledge Name

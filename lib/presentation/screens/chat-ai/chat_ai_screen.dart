@@ -1148,111 +1148,110 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
         body: Column(
           children: [
             // Model selector and conversation indicator
-            // Only show this when keyboard is not visible to save layout computation
-            if (!_isKeyboardVisible)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  children: [
-                    // Current conversation indicator
-                    if (_currentConversationId != null)
-                      Container(
+            // Always show this regardless of keyboard visibility
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  // Current conversation indicator
+                  if (_currentConversationId != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.blue.shade200),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.chat,
+                            size: 16,
+                            color: Colors.blue.shade700,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'In conversation',
+                            style: TextStyle(
+                              color: Colors.blue.shade700,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  const Spacer(),
+                  // Model selector
+                  Center(
+                    child: TextButton(
+                      onPressed: _showModelSelectionDialog,
+                      style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
                           vertical: 6,
                         ),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.shade50,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.blue.shade200),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.chat,
-                              size: 16,
-                              color: Colors.blue.shade700,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'In conversation',
-                              style: TextStyle(
-                                color: Colors.blue.shade700,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
+                        backgroundColor: Colors.grey.shade50,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          side: BorderSide(color: Colors.grey.shade300),
                         ),
                       ),
-                    const Spacer(),
-                    // Model selector
-                    Center(
-                      child: TextButton(
-                        onPressed: _showModelSelectionDialog,
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Icon based on model type
+                          Icon(
+                            _selectedModel.startsWith('gpt-')
+                                ? Icons.auto_awesome
+                                : _selectedModel.startsWith('claude-')
+                                ? Icons.psychology
+                                : _selectedModel.startsWith('gemini-')
+                                ? Icons.brightness_auto
+                                : Icons.assistant,
+                            size: 16,
+                            color:
+                                _selectedModel.startsWith('gpt-')
+                                    ? Colors.green.shade700
+                                    : _selectedModel.startsWith('claude-')
+                                    ? Colors.purple.shade700
+                                    : _selectedModel.startsWith('gemini-')
+                                    ? Colors.blue.shade700
+                                    : Colors.orange.shade700,
                           ),
-                          backgroundColor: Colors.grey.shade50,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            side: BorderSide(color: Colors.grey.shade300),
+                          const SizedBox(width: 6),
+                          ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxWidth:
+                                  MediaQuery.of(context).size.width * 0.36,
+                            ),
+                            child: Text(
+                              _selectedModelName,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.grey.shade800,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            // Icon based on model type
-                            Icon(
-                              _selectedModel.startsWith('gpt-')
-                                  ? Icons.auto_awesome
-                                  : _selectedModel.startsWith('claude-')
-                                  ? Icons.psychology
-                                  : _selectedModel.startsWith('gemini-')
-                                  ? Icons.brightness_auto
-                                  : Icons.assistant,
-                              size: 16,
-                              color:
-                                  _selectedModel.startsWith('gpt-')
-                                      ? Colors.green.shade700
-                                      : _selectedModel.startsWith('claude-')
-                                      ? Colors.purple.shade700
-                                      : _selectedModel.startsWith('gemini-')
-                                      ? Colors.blue.shade700
-                                      : Colors.orange.shade700,
-                            ),
-                            const SizedBox(width: 6),
-                            ConstrainedBox(
-                              constraints: BoxConstraints(
-                                maxWidth:
-                                    MediaQuery.of(context).size.width * 0.36,
-                              ),
-                              child: Text(
-                                _selectedModelName,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.grey.shade800,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            const SizedBox(width: 2),
-                            Icon(
-                              Icons.arrow_drop_down,
-                              color: Colors.grey.shade700,
-                              size: 18,
-                            ),
-                          ],
-                        ),
+                          const SizedBox(width: 2),
+                          Icon(
+                            Icons.arrow_drop_down,
+                            color: Colors.grey.shade700,
+                            size: 18,
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
+            ),
             // Existing chat content
             Expanded(
               child:
