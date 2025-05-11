@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:amd_chat_ai/config/dio_clients.dart';
-import 'package:amd_chat_ai/config/user_storage.dart';
 import 'package:amd_chat_ai/model/datasource.dart';
 import 'package:amd_chat_ai/model/knowledge.dart';
 import 'package:dio/dio.dart';
@@ -16,14 +15,11 @@ class KnowledgeService {
     String? orderField,
   }) async {
     try {
-      // debugPrint("KnowledgeService: Starting getKnowledge call");
-      // Build query parameters
       final Map<String, dynamic> queryParams = {
         'offset': offset,
         'limit': limit,
       };
 
-      // Add optional filters if provided
       if (q != null) {
         queryParams['q'] = q;
       }
@@ -36,20 +32,10 @@ class KnowledgeService {
         queryParams['order'] = order;
       }
 
-      // Get user ID for the header
-      final userId = await UserStorage.getUserId();
-      final accessToken = await UserStorage.getAccessToken();
-      // debugPrint("KnowledgeService: User ID: $userId");
-      // debugPrint("KnowledgeService: Access Token: $accessToken");
-
       final response = await DioClients.kbClient.get(
         '/kb-core/v1/knowledge',
         queryParameters: queryParams,
       );
-
-      // print(
-      //   '>>>>>>>>>>>>>>>>>>>>>>>>> KnowledgeService-GET-getknowledges: Response data: ${response.data} $queryParams',
-      // );
 
       return KnowledgeResponse.fromJson(response.data);
     } on DioException catch (e) {
@@ -71,21 +57,11 @@ class KnowledgeService {
         'description': description,
       };
 
-      // debugPrint('KnowledgeService: Create request data: $data');
-
       final response = await DioClients.kbClient.post(
         '/kb-core/v1/knowledge',
         data: data,
       );
 
-      // debugPrint(
-      //   'KnowledgeService: Create knowledge response status: ${response.statusCode}',
-      // );
-      // debugPrint(
-      //   'KnowledgeService: Create knowledge response: ${response.data}',
-      // );
-
-      // Parse the response into a Knowledge object
       return Knowledge.fromJson(response.data);
     } on DioException catch (e) {
       debugPrint(
@@ -114,10 +90,6 @@ class KnowledgeService {
         '/kb-core/v1/knowledge/$id/units',
       );
 
-      print(
-        'KnowledgeService: Response data for knowledge by ID: ${response.data}',
-      );
-
       return Knowledge.fromJson(response.data);
     } on DioException catch (e) {
       debugPrint(
@@ -127,17 +99,10 @@ class KnowledgeService {
     }
   }
 
-  // Future<FormData> createFormData(String fileName, String filePath) async {
-  //   String fileExtension = fileName.split('.').last.toLowerCase();
-
-  //   FileExtensionType fileType;
-  // }
-
   Future<String?> uploadLocalFile({required String filePath}) async {
     try {
       final file = File(filePath);
       if (!file.existsSync()) {
-        print('KnowledgeService: File does not exist at path: $filePath');
         return null;
       }
 
@@ -159,10 +124,6 @@ class KnowledgeService {
         'KnowledgeService: Upload file response status: ${response.statusCode}',
       );
       debugPrint('KnowledgeService: Upload file response: ${response.data}');
-
-      print(
-        'KnowledgeService: Uploaded file ID: ${response.data["files"][0]["id"]}',
-      );
 
       return response.data["files"][0]["id"];
     } on DioException catch (e) {
@@ -266,7 +227,6 @@ class KnowledgeService {
     required String apiToken,
   }) async {
     try {
-      print('KnowledgeService: Importing Slack to Knowledge with ID: $id');
       final response = await DioClients.kbClient.post(
         '/kb-core/v1/knowledge/$id/datasources',
         data: {
@@ -379,16 +339,10 @@ class KnowledgeService {
         queryParams['order'] = order;
       }
 
-      print('KnowledgeService: Datasource queryParams: $queryParams');
-
-      // print('KnowledgeService: Datasource queryParams with knowledgeID: $id');
-
       final response = await DioClients.kbClient.get(
         '/kb-core/v1/knowledge/$id/datasources',
         queryParameters: queryParams,
       );
-
-      // print('KnowledgeService: Datasource response data: ${response.data}');
 
       return DatasourceResponse.fromJson(response.data);
     } on DioException catch (e) {
