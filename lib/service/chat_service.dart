@@ -186,7 +186,6 @@ class ChatAIService {
     }
   }
 
-
   Future<Response?> sendResponseMail({
     required EmailRequest emailRequest,
     required String assistantId, // e.g., 'gpt-4o-mini'
@@ -352,7 +351,6 @@ class ChatAIService {
       return null;
     }
   }
-
 
   // Helper method to get assistant name from ID
   String _getAssistantName(String assistantId) {
@@ -535,6 +533,114 @@ class ChatAIService {
     } catch (e) {
       debugPrint('Non-streaming error: $e');
       return {'type': 'error', 'error': e.toString()};
+    }
+  }
+
+  Stream<Map<String, dynamic>> sendEmailMessage({
+    required EmailRequest emailRequest,
+    String? conversationId,
+  }) async* {
+    try {
+      // Prepare the request data
+      final Map<String, dynamic> requestData = {
+        'email': emailRequest.email,
+        'action': emailRequest.action,
+        'mainIdea': emailRequest.mainIdea,
+        'metadata': {
+          'subject': emailRequest.metadata?.subject,
+          'sender': emailRequest.metadata?.sender,
+          'receiver': emailRequest.metadata?.receiver,
+          'language': emailRequest.metadata?.language,
+          'style': {
+            "length": "long",
+            "formality": "neutral",
+            "tone": "friendly",
+          },
+        },
+      };
+
+      debugPrint('Sending email request with data: $requestData');
+
+      final response = await DioClients.jarvisClient.post(
+        '/api/v1/ai-email',
+        data: requestData,
+        options: Options(
+          responseType: ResponseType.stream,
+          headers: {
+            'Accept': 'text/event-stream',
+            'Connection': 'keep-alive',
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+
+      final stream = response.data.stream as Stream<List<int>>;
+      String buffer = '';
+      String accumulatedContent = '';
+
+      await for (final chunk in stream) {
+        // Convert chunk to string and add to buffer
+        buffer += String.fromCharCodes(chunk);
+
+        // Process complete events in buffer
+        while (buffer.contains('\n\n')) {
+          final eventEndIndex = buffer.indexOf('\n\n');
+          final event = buffer.substring(0, eventEndIndex);
+          buffer = buffer.substring(eventEndIndex + 2);
+
+          // Parse event
+          final eventLines = event.split('\n');
+          String? eventName;
+          String? eventData;
+
+          for (final line in eventLines) {
+            if (line.startsWith('event: ')) {
+              eventName = line.substring(7);
+            } else if (line.startsWith('data: ')) {
+              eventData = line.substring(6);
+            }
+          }
+
+          if (eventData != null) {
+            try {
+              final data = jsonDecode(eventData);
+              if (data is Map<String, dynamic>) {
+                if (data['type'] == 'error') {
+                  yield {
+                    'type': 'error',
+                    'error': data['error'] ?? 'Unknown error',
+                  };
+                  return;
+                }
+
+                final content = data['content'] as String?;
+                if (content != null) {
+                  accumulatedContent += content;
+                  yield {
+                    'type': 'chunk',
+                    'content': content,
+                    'conversationId': data['conversationId'],
+                  };
+                }
+
+                if (eventName == 'complete') {
+                  yield {
+                    'type': 'complete',
+                    'content': accumulatedContent,
+                    'conversationId': data['conversationId'],
+                  };
+                }
+              }
+            } catch (e) {
+              debugPrint('Error parsing event data: $e');
+              yield {'type': 'error', 'error': 'Error parsing response data'};
+            }
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Email stream error: $e');
+      yield {'type': 'error', 'error': e.toString()};
     }
   }
 }
