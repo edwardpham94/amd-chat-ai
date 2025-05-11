@@ -283,6 +283,77 @@ class ChatAIService {
     }
   }
 
+  Future<Response?> suggestReplyIdeas({
+    required EmailRequest emailRequest,
+    required String assistantId, // e.g., 'gpt-4o-mini'
+    String? conversationId,
+    String? jarvisGuid,
+    Map<String, dynamic>? metadata,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('access_token');
+      final userId = prefs.getString('user_id');
+
+      // Determine whether this is a predefined model or custom assistant
+      // Predefined models contain a hyphen, custom assistant IDs are typically UUIDs without hyphens
+      final bool isCustomAssistant =
+          !assistantId.startsWith('gpt-') &&
+          !assistantId.startsWith('claude-') &&
+          !assistantId.startsWith('gemini-');
+      final String modelType = isCustomAssistant ? 'knowledge-base' : 'dify';
+
+      // Prepare the request data
+      final Map<String, dynamic> requestData = {
+        // 'assistant': {
+        //   'id': assistantId,
+        //   'model': modelType,
+        //   'name': _getAssistantName(assistantId),
+        // },
+        'email': emailRequest.email,
+        'action': emailRequest.action,
+        'mainIdea': emailRequest.mainIdea,
+        'metadata': {
+          "context": [],
+          'subject': emailRequest.metadata?.subject,
+          'sender': emailRequest.metadata?.sender,
+          'receiver': emailRequest.metadata?.receiver,
+          'language': emailRequest.metadata?.language,
+          'style': {
+            "length": "long",
+            "formality": "neutral",
+            "tone": "friendly",
+          },
+        },
+      };
+
+      debugPrint('Sending message with data: $requestData');
+
+      final response = await DioClients.jarvisClient.post(
+        '/api/v1/ai-email/reply-ideas',
+        data: requestData,
+        options: Options(headers: {'Content-Type': 'application/json'}),
+      );
+
+      debugPrint('Message sent successfully: ${response.statusCode}');
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        debugPrint('Response data: ${response.data}');
+        // If this was a new conversation, save the conversation ID
+        if (conversationId == null && response.data['conversationId'] != null) {
+          debugPrint(
+            'New conversation created with ID: ${response.data['conversationId']}',
+          );
+        }
+      }
+
+      return response;
+    } on DioException catch (e) {
+      debugPrint('Send message error: ${e.response?.data ?? e.message}');
+      return null;
+    }
+  }
+
+
   // Helper method to get assistant name from ID
   String _getAssistantName(String assistantId) {
     switch (assistantId) {

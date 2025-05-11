@@ -25,6 +25,10 @@ class _DatasourceScreenState extends State<DatasourceScreen> {
   String? _selectedWebsiteUrl;
   String? _selectedWebsiteName;
 
+  String? _knowledge_unit_name;
+  String? _confluence_username;
+  String? _confluence_api_token;
+
   final TextEditingController _searchController = TextEditingController();
 
   // Category filter
@@ -921,6 +925,401 @@ class _DatasourceScreenState extends State<DatasourceScreen> {
     );
   }
 
+  void _showConfluenceDialog(BuildContext context) {
+    final linkController = TextEditingController();
+    final nameController = TextEditingController();
+    final usernameController = TextEditingController();
+    final apiTokenController = TextEditingController();
+
+    bool isValidUrl(String url) {
+      try {
+        final uri = Uri.parse(url);
+        return uri.hasScheme && uri.host.isNotEmpty;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            bool isValid = isValidUrl(linkController.text);
+
+            // Add listener to update button state
+            linkController.addListener(() {
+              setDialogState(() {});
+            });
+
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                width: double.infinity,
+                constraints: const BoxConstraints(maxWidth: 400),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Header with avatars
+                    CircleAvatar(
+                      backgroundColor: Colors.purple[100],
+                      radius: 30,
+                      child: const Icon(
+                        Icons.language_outlined,
+                        color: Colors.white,
+                        size: 30,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Title
+                    const Text(
+                      'Confluence',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Import Link Website',
+                      style: TextStyle(color: Colors.grey, fontSize: 14),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Website name input field
+                    TextField(
+                      controller: nameController,
+                      decoration: InputDecoration(
+                        labelText: 'Name',
+                        hintText: 'Enter knowledge unit name',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    TextField(
+                      controller: linkController,
+                      decoration: InputDecoration(
+                        labelText: 'Wiki Page URL',
+                        hintText: 'hpps://wiki.example.com/page',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    TextField(
+                      controller: usernameController,
+                      decoration: InputDecoration(
+                        labelText: 'Username',
+                        hintText: 'Enter your Confluence username',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Link input field
+                    TextField(
+                      controller: apiTokenController,
+                      decoration: InputDecoration(
+                        labelText: 'API Token',
+                        hintText: 'Enter your Confluence API token',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.content_paste),
+                          onPressed: () {
+                            // Handle paste functionality
+                          },
+                          constraints: const BoxConstraints(),
+                          padding: const EdgeInsets.all(8),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Confirm button
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          var response = await _knowledgeService
+                              .importConfluenceToKnowledge(
+                                id: _knowledgeId!,
+                                url: linkController.text,
+                                knowledgeName: nameController.text,
+                                username: usernameController.text,
+                                apiToken: apiTokenController.text,
+                              );
+
+                          if (response) {
+                            setState(() {
+                              // Clear the selected file and source
+                              _selectedFile = null;
+                              _selectedSource = null;
+                            });
+                            Navigator.pop(context);
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Failed to upload website.'),
+                              ),
+                            );
+                          }
+                        },
+                        // isValid
+                        //     ? () {
+                        //       setState(() {
+                        //         _selectedSource = 'Confluence';
+                        //         _knowledge_unit_name = nameController.text;
+                        //         _confluence_username =
+                        //             usernameController.text;
+                        //         _confluence_api_token =
+                        //             apiTokenController.text;
+                        //         _selectedWebsiteUrl = linkController.text;
+                        //       });
+                        //       Navigator.pop(context);
+                        //     }
+                        //     : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF415DF2),
+                          disabledBackgroundColor: Colors.grey[300],
+                          foregroundColor: Colors.white,
+                          disabledForegroundColor: Colors.grey[500],
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: const Text(
+                          'Confirm',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Cancel button
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: TextButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(color: Colors.grey[300]!),
+                          ),
+                        ),
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(color: Colors.black87),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showSlackDialog(BuildContext context) {
+    final nameController = TextEditingController();
+    final apiTokenController = TextEditingController();
+
+    bool isValidUrl(String url) {
+      try {
+        final uri = Uri.parse(url);
+        return uri.hasScheme && uri.host.isNotEmpty;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            // bool isValid = isValidUrl(linkController.text);
+
+            // // Add listener to update button state
+            // linkController.addListener(() {
+            //   setDialogState(() {});
+            // });
+
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                width: double.infinity,
+                constraints: const BoxConstraints(maxWidth: 400),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Header with avatars
+                    CircleAvatar(
+                      backgroundColor: Colors.purple[100],
+                      radius: 30,
+                      child: const Icon(
+                        Icons.language_outlined,
+                        color: Colors.white,
+                        size: 30,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    TextField(
+                      controller: nameController,
+                      decoration: InputDecoration(
+                        labelText: 'Name',
+                        hintText: 'Enter your knowledge unit name',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.content_paste),
+                          onPressed: () {
+                            // Handle paste functionality
+                          },
+                          constraints: const BoxConstraints(),
+                          padding: const EdgeInsets.all(8),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    TextField(
+                      controller: apiTokenController,
+                      decoration: InputDecoration(
+                        labelText: 'Slack Bot Token',
+                        hintText: 'Enter your Slack bot token',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.content_paste),
+                          onPressed: () {
+                            // Handle paste functionality
+                          },
+                          constraints: const BoxConstraints(),
+                          padding: const EdgeInsets.all(8),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Confirm button
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          var response = await _knowledgeService
+                              .importSlackToKnowledge(
+                                id: _knowledgeId!,
+                                knowledgeName: nameController.text,
+                                apiToken: apiTokenController.text,
+                              );
+
+                          if (response) {
+                            setState(() {
+                              // Clear the selected file and source
+                              _selectedFile = null;
+                              _selectedSource = null;
+                            });
+                            Navigator.pop(context);
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Failed to upload website.'),
+                              ),
+                            );
+                          }
+                        },
+                        // isValid
+                        //     ? () {
+                        //       setState(() {
+                        //         _selectedSource = 'Confluence';
+                        //         _knowledge_unit_name = nameController.text;
+                        //         _confluence_username =
+                        //             usernameController.text;
+                        //         _confluence_api_token =
+                        //             apiTokenController.text;
+                        //         _selectedWebsiteUrl = linkController.text;
+                        //       });
+                        //       Navigator.pop(context);
+                        //     }
+                        //     : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF415DF2),
+                          disabledBackgroundColor: Colors.grey[300],
+                          foregroundColor: Colors.white,
+                          disabledForegroundColor: Colors.grey[500],
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: const Text(
+                          'Confirm',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Cancel button
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: TextButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(color: Colors.grey[300]!),
+                          ),
+                        ),
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(color: Colors.black87),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _showSourceSelectionDialog(
     BuildContext context,
     List<Map<String, dynamic>> sources,
@@ -991,6 +1390,12 @@ class _DatasourceScreenState extends State<DatasourceScreen> {
                       } else if (i == 1) {
                         // Website
                         _showWebsiteDialog(context);
+                      } else if (i == 3) {
+                        // Website
+                        _showSlackDialog(context);
+                      } else if (i == 4) {
+                        // Website
+                        _showConfluenceDialog(context);
                       } else {
                         // For other options, you could navigate to different screens
                         debugPrint("Selected source: ${sources[i]['title']}");
@@ -1165,6 +1570,12 @@ class _DatasourceScreenState extends State<DatasourceScreen> {
         'description': 'Import Link Slack',
         'icon': FontAwesomeIcons.slack,
         'avatarColor': Colors.green[100]!,
+      },
+      {
+        'title': 'Confluence',
+        'description': 'Import Link Confluence',
+        'icon': FontAwesomeIcons.atlassian,
+        'avatarColor': Colors.yellowAccent[100]!,
       },
     ];
 
@@ -1414,76 +1825,75 @@ class _DatasourceScreenState extends State<DatasourceScreen> {
                                     trailing: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        // Favorite button
-                                        // IconButton(
-                                        //   icon: Icon(
-                                        //     prompt.isFavorite
-                                        //         ? Icons.star_rounded
-                                        //         : Icons.star_outline_rounded,
-                                        //     color:
-                                        //         prompt.isFavorite
-                                        //             ? Colors.amber
-                                        //             : Colors.grey,
-                                        //   ),
-                                        //   onPressed:
-                                        //       () => _toggleFavorite(
-                                        //         prompt.id,
-                                        //         prompt.isFavorite,
-                                        //       ),
-                                        // ),
-                                        // Delete button
-                                        IconButton(
-                                          icon: const Icon(
-                                            Icons.delete_outline,
-                                            color: Colors.red,
+                                        Tooltip(
+                                          message:
+                                              datasource.status
+                                                  ? 'Disable Datasource'
+                                                  : 'Enable Datasource',
+                                          child: IconButton(
+                                            icon: Icon(
+                                              datasource.status
+                                                  ? Icons.toggle_on
+                                                  : Icons.toggle_off,
+                                              color:
+                                                  datasource.status
+                                                      ? Colors.green
+                                                      : Colors.grey,
+                                            ),
+                                            onPressed: () async {
+                                              // _handleToggleDatasourceStatus()
+
+                                              var response =
+                                                  await _knowledgeService
+                                                      .handleDisabledDatasource(
+                                                        knowledgeId:
+                                                            _knowledgeId!,
+                                                        datasourceId:
+                                                            datasource.id!,
+                                                        datasourceStatus:
+                                                            datasource.status,
+                                                      );
+                                              if (response) {
+                                                _loadDatasources(refresh: true);
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
+                                                  const SnackBar(
+                                                    content: Text(
+                                                      'Datasource status updated',
+                                                    ),
+                                                  ),
+                                                );
+                                              } else {
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
+                                                  const SnackBar(
+                                                    content: Text(
+                                                      'Failed to update datasource status',
+                                                    ),
+                                                  ),
+                                                );
+                                              }
+                                            },
                                           ),
-                                          onPressed:
-                                              () => _showDeleteConfirmation(
-                                                context,
-                                                datasource.name,
-                                              ),
                                         ),
-                                        // IconButton(
-                                        //   icon: const Icon(
-                                        //     Icons.arrow_forward_rounded,
-                                        //     color: Colors.blue,
-                                        //   ),
-                                        //   onPressed: () {
-                                        //     _showPromptSelectionModal(
-                                        //       prompt.name,
-                                        //       prompt.name,
-                                        //     );
-                                        //   },
-                                        //   tooltip: 'Apply this prompt',
-                                        // ),
+                                        Tooltip(
+                                          message: 'Delete Datasource',
+                                          child: IconButton(
+                                            icon: const Icon(
+                                              Icons.delete_outline,
+                                              color: Colors.red,
+                                            ),
+                                            onPressed:
+                                                () => _showDeleteConfirmation(
+                                                  context,
+                                                  datasource.name,
+                                                ),
+                                          ),
+                                        ),
                                       ],
                                     ),
-                                    // onTap: () async {
-                                    //   // Navigate to update prompt screen
-                                    //   final result = await Navigator.of(
-                                    //     context,
-                                    //   ).pushNamed(
-                                    //     '/update-prompt',
-                                    //     arguments: {
-                                    //       'id': prompt.id,
-                                    //       'title': prompt.title,
-                                    //       'content': prompt.content,
-                                    //       'description': prompt.description,
-                                    //       'category': prompt.category,
-                                    //       'language': prompt.language,
-                                    //       'isPublic': prompt.isPublic,
-                                    //       'userId': prompt.userId,
-                                    //     },
-                                    //   );
-
-                                    //   // If prompt was updated successfully, refresh the list
-                                    //   if (result == true && mounted) {
-                                    //     debugPrint(
-                                    //       'Prompt updated, refreshing list',
-                                    //     );
-                                    //     _loadDatasources(refresh: true);
-                                    //   }
-                                    // },
                                   ),
                                 );
                               },

@@ -77,7 +77,7 @@ class _KnowledgeScreenState extends State<KnowledgeScreen> {
       );
       final searchQuery = _searchController.text.trim();
       final response = await _knowledgeService.getKnowledges(
-        offset: _currentOffset,
+        offset: _offset,
         limit: _limit,
         q: searchQuery,
       );

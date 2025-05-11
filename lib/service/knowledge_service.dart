@@ -215,6 +215,88 @@ class KnowledgeService {
     }
   }
 
+  Future<bool> importConfluenceToKnowledge({
+    required String id,
+    required String knowledgeName,
+    required String url,
+    required String username,
+    required String apiToken,
+  }) async {
+    try {
+      print('KnowledgeService: Importing Confluence to Knowledge with ID: $id');
+      final response = await DioClients.kbClient.post(
+        '/kb-core/v1/knowledge/$id/datasources',
+        data: {
+          'datasources': [
+            {
+              'name': knowledgeName,
+              'type': "confluence",
+              'credentials': {
+                'url': url,
+                'username': username,
+                'token': apiToken,
+              },
+            },
+          ],
+        },
+      );
+
+      debugPrint(
+        'KnowledgeService: Import Confluence To Knowledge response status: ${response.statusCode}',
+      );
+      debugPrint(
+        'KnowledgeService: Import Confluence To Knowledge response: ${response.data}',
+      );
+
+      return true;
+    } on DioException catch (e) {
+      debugPrint(
+        'KnowledgeService: Error Import DataSource To Knowledge: ${e}',
+      );
+      debugPrint(
+        'KnowledgeService: Error Import DataSource To Knowledge: ${e.response?.data ?? e.message}',
+      );
+      return false;
+    }
+  }
+
+  Future<bool> importSlackToKnowledge({
+    required String id,
+    required String knowledgeName,
+    required String apiToken,
+  }) async {
+    try {
+      print('KnowledgeService: Importing Slack to Knowledge with ID: $id');
+      final response = await DioClients.kbClient.post(
+        '/kb-core/v1/knowledge/$id/datasources',
+        data: {
+          'datasources': [
+            {
+              'name': knowledgeName,
+              'type': "slack",
+              'credentials': {'token': apiToken},
+            },
+          ],
+        },
+      );
+
+      debugPrint(
+        'KnowledgeService: Import Slack To Knowledge response status: ${response.statusCode}',
+      );
+      debugPrint(
+        'KnowledgeService: Import Slack To Knowledge response: ${response.data}',
+      );
+
+      return true;
+    } on DioException catch (e) {
+      debugPrint('KnowledgeService: Error Import Slack To Knowledge: ${e}');
+      debugPrint(
+        'KnowledgeService: Error Import Slack To Knowledge: ${e.response?.data ?? e.message}',
+      );
+      return false;
+    }
+  }
+
   Future<bool> uploadFromWebsite({
     required String id,
     required String unitName,
@@ -314,6 +396,34 @@ class KnowledgeService {
         'KnowledgeService: Error fetching datasources: ${e.response?.data ?? e.message}',
       );
       return null;
+    }
+  }
+
+
+  Future<bool> handleDisabledDatasource({
+    required String knowledgeId,
+    required String datasourceId,
+    required bool datasourceStatus,
+  }) async {
+    try {
+      final response = await DioClients.kbClient.patch(
+        '/kb-core/v1/knowledge/$knowledgeId/datasources/$datasourceId',
+        data: {'status': !datasourceStatus},
+      );
+
+      debugPrint(
+        'KnowledgeService: Disable Datasource response status: ${response.statusCode}',
+      );
+      debugPrint(
+        'KnowledgeService: Disable Datasource response: ${response.data}',
+      );
+
+      return true;
+    } on DioException catch (e) {
+      debugPrint(
+        'KnowledgeService: Error Disable datasource: ${e.response?.data ?? e.message}',
+      );
+      return false;
     }
   }
 }

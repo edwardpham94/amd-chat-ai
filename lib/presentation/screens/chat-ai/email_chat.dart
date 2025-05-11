@@ -3,7 +3,6 @@ import 'package:amd_chat_ai/model/conversation_message.dart';
 import 'package:amd_chat_ai/model/assistant.dart';
 import 'package:amd_chat_ai/model/email_request.dart';
 import 'package:amd_chat_ai/presentation/screens/widgets/chat-ai/conversation_history_modal.dart';
-import 'package:amd_chat_ai/presentation/screens/widgets/chat-ai/prompt_template.dart';
 import 'package:amd_chat_ai/service/chat_service.dart';
 import 'package:amd_chat_ai/service/prompt_service.dart';
 import 'package:amd_chat_ai/service/assistant_service.dart';
@@ -39,6 +38,11 @@ class _EmailChatScreenState extends State<EmailChatScreen> {
   bool _showPromptList = false; // Flag to show/hide the prompt list
   bool _isFetchingPrompts =
       false; // Flag to indicate if prompts are being fetched
+
+  final ScrollController _scrollController = ScrollController();
+  String _selectedOption = 'Response Email'; 
+
+
 
   // Keyboard visibility handling
   bool _isKeyboardVisible = false;
@@ -293,7 +297,18 @@ class _EmailChatScreenState extends State<EmailChatScreen> {
     _senderController.dispose();
     _receiverController.dispose();
     _languageController.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
   }
 
   Future<void> _fetchPrompts(String query) async {
@@ -531,6 +546,16 @@ class _EmailChatScreenState extends State<EmailChatScreen> {
     });
   }
 
+  String changeFormatSuggestReplyIdeas(String input) {
+    String formatted = input
+        .substring(1, input.length - 1) // Remove the square brackets
+        .split(',') // Split by comma
+        .map((e) => e.trim()) // Trim whitespace
+        .join(',\n'); // Join with a newline after each comma
+
+    return formatted;
+  }
+
   Future<void> _handleSendMessage() async {
     _messageController.text =
         'Main idea : ${_mainIdeaController.text}\n'
@@ -587,8 +612,14 @@ class _EmailChatScreenState extends State<EmailChatScreen> {
       print('Email Request: $emailRequest');
 
       try {
-        // Send message to API
-        final response = await _chatService.sendResponseMail(
+        final response =
+            _selectedOption == 'Response Email'
+                ? await _chatService.sendResponseMail(
+                  assistantId: _selectedModel,
+                  conversationId: _currentConversationId,
+                  emailRequest: EmailRequest.fromJson(emailRequest),
+                )
+                : await _chatService.suggestReplyIdeas(
           assistantId: _selectedModel,
           conversationId: _currentConversationId,
           emailRequest: EmailRequest.fromJson(emailRequest),
@@ -612,13 +643,19 @@ class _EmailChatScreenState extends State<EmailChatScreen> {
             });
           }
 
+          
+
           // Add AI response to UI
           if (mounted) {
             setState(() {
               _isWaitingForResponse = false;
               _messages.add({
                 'message':
-                    response.data['message'] ?? 'No response from assistant',
+                    _selectedOption == "Response Email"
+                        ? response.data['email'] ?? 'No response from assistant'
+                        : changeFormatSuggestReplyIdeas(
+                          response.data['ideas'].toString(),
+                        ),
                 'type': MessageType.assistant,
                 'timestamp': DateTime.now(),
               });
@@ -1352,6 +1389,9 @@ class _EmailChatScreenState extends State<EmailChatScreen> {
       );
     }
 
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+
+
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       // Add +1 to itemCount if we're waiting for a response to show the loading indicator
@@ -1402,180 +1442,6 @@ class _EmailChatScreenState extends State<EmailChatScreen> {
     );
   }
 
-  // Widget _buildChatInput() {
-  //   return Container(
-  //     padding: const EdgeInsets.all(16),
-  //     decoration: BoxDecoration(
-  //       color: Colors.white,
-  //       border: Border(top: BorderSide(color: Colors.grey.shade200)),
-  //     ),
-  //     child: SafeArea(
-  //       child: Column(
-  //         mainAxisSize: MainAxisSize.min,
-  //         children: [
-  //           Container(
-  //             decoration: BoxDecoration(
-  //               color: Colors.grey.shade50,
-  //               borderRadius: BorderRadius.circular(12),
-  //               border: Border.all(color: Colors.grey.shade200),
-  //             ),
-  //             child: Column(
-  //               mainAxisSize: MainAxisSize.min,
-  //               children: [
-  //                 Row(
-  //                   children: [
-  //                     Expanded(
-  //                       child: TextField(
-  //                         controller: _messageController,
-  //                         focusNode: _messageFocusNode,
-  //                         keyboardType: TextInputType.text,
-  //                         textInputAction: TextInputAction.send,
-  //                         // Reduce rebuilds when typing
-  //                         enableSuggestions: false,
-  //                         decoration: const InputDecoration(
-  //                           hintText:
-  //                               'Ask me anything, press \'/\' for prompts...',
-  //                           hintStyle: TextStyle(
-  //                             color: Colors.grey,
-  //                             fontSize: 14,
-  //                           ),
-  //                           border: InputBorder.none,
-  //                           contentPadding: EdgeInsets.symmetric(
-  //                             horizontal: 16,
-  //                             vertical: 12,
-  //                           ),
-  //                         ),
-  //                         onChanged: (value) {
-  //                           // Only fetch prompts if the text starts with '/'
-  //                           if (value.startsWith('/')) {
-  //                             // Remove the '/' prefix for the search query
-  //                             _fetchPrompts(value.substring(1));
-  //                           } else {
-  //                             // Hide prompt list if text doesn't start with '/'
-  //                             setState(() {
-  //                               _showPromptList = false;
-  //                             });
-  //                           }
-  //                         },
-  //                         onSubmitted: (_) async => await _handleSendMessage(),
-  //                       ),
-  //                     ),
-  //                     IconButton(
-  //                       icon: const Icon(Icons.schedule),
-  //                       color: Colors.grey,
-  //                       onPressed: _showConversationHistoryModal,
-  //                       tooltip: 'View conversation history',
-  //                     ),
-  //                     IconButton(
-  //                       icon: const Icon(Icons.add_circle_outline),
-  //                       color: Colors.grey,
-  //                       onPressed: _createNewConversation,
-  //                       tooltip: 'Start a new conversation',
-  //                     ),
-  //                   ],
-  //                 ),
-  //                 // Use AnimatedSize for smoother transitions when showing/hiding prompt list
-  //                 AnimatedSize(
-  //                   duration: const Duration(milliseconds: 200),
-  //                   child:
-  //                       _showPromptList
-  //                           ? Container(
-  //                             constraints: const BoxConstraints(maxHeight: 200),
-  //                             decoration: BoxDecoration(
-  //                               color: Colors.white,
-  //                               borderRadius: BorderRadius.circular(12),
-  //                               border: Border.all(color: Colors.grey.shade200),
-  //                             ),
-  //                             child:
-  //                                 _isFetchingPrompts
-  //                                     ? const Center(
-  //                                       child: Padding(
-  //                                         padding: EdgeInsets.all(16.0),
-  //                                         child: CircularProgressIndicator(
-  //                                           strokeWidth: 2,
-  //                                         ),
-  //                                       ),
-  //                                     )
-  //                                     : ListView.builder(
-  //                                       shrinkWrap: true,
-  //                                       itemCount: _prompts.length,
-  //                                       itemBuilder: (context, index) {
-  //                                         final promptTitle = _prompts[index];
-  //                                         final promptContent =
-  //                                             _promptContents[index];
-  //                                         return ListTile(
-  //                                           title: Text(promptTitle),
-  //                                           onTap: () {
-  //                                             setState(() {
-  //                                               _showPromptList = false;
-  //                                             });
-  //                                             _showPromptSelectionModal(
-  //                                               promptTitle,
-  //                                               promptContent,
-  //                                             );
-  //                                           },
-  //                                         );
-  //                                       },
-  //                                     ),
-  //                           )
-  //                           : const SizedBox.shrink(),
-  //                 ),
-  //               ],
-  //             ),
-  //           ),
-  //           const SizedBox(height: 8),
-  //           Row(
-  //             children: [
-  //               _isLoadingTokens
-  //                   ? SizedBox(
-  //                     width: 12,
-  //                     height: 12,
-  //                     child: CircularProgressIndicator(
-  //                       strokeWidth: 2,
-  //                       color: Colors.grey,
-  //                     ),
-  //                   )
-  //                   : _isUnlimited
-  //                   ? const Text(
-  //                     '🔥 Unlimited',
-  //                     style: TextStyle(color: Colors.grey, fontSize: 12),
-  //                   )
-  //                   : Text(
-  //                     '🔥 $_tokenCount',
-  //                     style: const TextStyle(color: Colors.grey, fontSize: 12),
-  //                   ),
-  //               const Spacer(),
-  //               TextButton(
-  //                 onPressed: () async => await _handleSendMessage(),
-  //                 style: TextButton.styleFrom(
-  //                   backgroundColor: const Color(0xFF007AFF),
-  //                   foregroundColor: Colors.white,
-  //                   shape: RoundedRectangleBorder(
-  //                     borderRadius: BorderRadius.circular(20),
-  //                   ),
-  //                   padding: const EdgeInsets.symmetric(
-  //                     horizontal: 16,
-  //                     vertical: 8,
-  //                   ),
-  //                 ),
-  //                 child: const Row(
-  //                   mainAxisSize: MainAxisSize.min,
-  //                   children: [
-  //                     Icon(Icons.send, size: 16),
-  //                     SizedBox(width: 4),
-  //                     Text('Send'),
-  //                   ],
-  //                 ),
-  //               ),
-  //               const SizedBox(width: 8),
-  //             ],
-  //           ),
-  //         ],
-  //       ),
-  //     ),
-  //   );
-  // }
-
   Future<void> _handleSendFields() async {
     final mainIdea = _mainIdeaController.text.trim();
     final action = _actionController.text.trim();
@@ -1605,7 +1471,7 @@ class _EmailChatScreenState extends State<EmailChatScreen> {
     ).showSnackBar(const SnackBar(content: Text('Fields sent successfully')));
   }
 
-  Widget _buildChatInput() {
+Widget _buildChatInput() {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1613,154 +1479,177 @@ class _EmailChatScreenState extends State<EmailChatScreen> {
         border: Border(top: BorderSide(color: Colors.grey.shade200)),
       ),
       child: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Main Idea Input
-              TextField(
-                controller: _mainIdeaController,
-                decoration: const InputDecoration(
-                  labelText: 'Main Idea',
-                  hintText: 'Enter the main idea...',
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              // Action Input
-              TextField(
-                controller: _actionController,
-                decoration: const InputDecoration(
-                  labelText: 'Action',
-                  hintText: 'Enter the action...',
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              // Email Input
-              TextField(
-                controller: _emailController,
-                maxLines: 4,
-                decoration: const InputDecoration(
-                  labelText: 'Email Content',
-                  hintText: 'Enter the email content...',
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Subject Input
-              TextField(
-                controller: _subjectController,
-                decoration: const InputDecoration(
-                  labelText: 'Subject',
-                  hintText: 'Enter the subject...',
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              // Sender Input
-              TextField(
-                controller: _senderController,
-                decoration: const InputDecoration(
-                  labelText: 'Sender',
-                  hintText: 'Enter the sender...',
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              // Receiver Input
-              TextField(
-                controller: _receiverController,
-                decoration: const InputDecoration(
-                  labelText: 'Receiver',
-                  hintText: 'Enter the receiver...',
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              // Language Input
-              TextField(
-                controller: _languageController,
-                decoration: const InputDecoration(
-                  labelText: 'Language',
-                  hintText: 'Enter the language...',
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Send Button
-              Row(
-                children: [
-                  const Spacer(),
-                  TextButton(
-                    onPressed: () async {
-                      await _handleSendMessage();
-                    },
-                    style: TextButton.styleFrom(
-                      backgroundColor: const Color(0xFF007AFF),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.send, size: 16),
-                        SizedBox(width: 4),
-                        Text('Send'),
-                      ],
+        child: SizedBox(
+          height: 200, // Set the desired height here
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Main Idea Input
+                TextField(
+                  controller: _mainIdeaController,
+                  decoration: const InputDecoration(
+                    labelText: 'Main Idea',
+                    hintText: 'Enter the main idea...',
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
                     ),
                   ),
-                  const SizedBox(width: 8),
-                ],
-              ),
-            ],
+                ),
+                const SizedBox(height: 8),
+
+                // Action Input
+                TextField(
+                  controller: _actionController,
+                  decoration: const InputDecoration(
+                    labelText: 'Action',
+                    hintText: 'Enter the action...',
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                // Email Input
+                TextField(
+                  controller: _emailController,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    labelText: 'Email Content',
+                    hintText: 'Enter the email content...',
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Subject Input
+                TextField(
+                  controller: _subjectController,
+                  decoration: const InputDecoration(
+                    labelText: 'Subject',
+                    hintText: 'Enter the subject...',
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                // Sender Input
+                TextField(
+                  controller: _senderController,
+                  decoration: const InputDecoration(
+                    labelText: 'Sender',
+                    hintText: 'Enter the sender...',
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                // Receiver Input
+                TextField(
+                  controller: _receiverController,
+                  decoration: const InputDecoration(
+                    labelText: 'Receiver',
+                    hintText: 'Enter the receiver...',
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                // Language Input
+                TextField(
+                  controller: _languageController,
+                  decoration: const InputDecoration(
+                    labelText: 'Language',
+                    hintText: 'Enter the language...',
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Send Button and Dropdown
+                Row(
+                  children: [
+                    // Dropdown for selecting options
+                    DropdownButton<String>(
+                      value: _selectedOption,
+                      onChanged: (String? newValue) {
+                        if (newValue != null) {
+                          setState(() {
+                            _selectedOption = newValue; // Update state
+                          });
+                        }
+                      },
+                      items:
+                          <String>[
+                            'Response Email',
+                            'Suggest Reply',
+                          ].map<DropdownMenuItem<String>>((String value) {
+                            return DropdownMenuItem<String>(
+                              value: value,
+                              child: Text(value),
+                            );
+                          }).toList(),
+                    ),
+                    const Spacer(),
+                    TextButton(
+                      onPressed: () async {
+                        await _handleSendMessage();
+                      },
+                      style: TextButton.styleFrom(
+                        backgroundColor: const Color(0xFF007AFF),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.send, size: 16),
+                          SizedBox(width: 4),
+                          Text('Send'),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
-
   void _showPromptSelectionModal(String promptTitle, String promptDescription) {
     // Create controller once and cache common widgets
     final TextEditingController inputController = TextEditingController();
