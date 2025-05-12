@@ -7,7 +7,7 @@ import 'package:amd_chat_ai/service/chat_service.dart';
 import 'package:amd_chat_ai/service/prompt_service.dart';
 import 'package:amd_chat_ai/service/assistant_service.dart';
 import 'package:amd_chat_ai/service/user_service.dart';
-import 'package:amd_chat_ai/services/ad_service.dart';
+import 'package:amd_chat_ai/service/ad_service.dart';
 import 'package:flutter/material.dart';
 import '../widgets/chat_message.dart';
 import 'package:amd_chat_ai/presentation/screens/widgets/base_screen.dart';

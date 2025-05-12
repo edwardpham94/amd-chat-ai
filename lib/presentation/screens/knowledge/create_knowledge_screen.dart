@@ -371,7 +371,7 @@ class _CreateKnowledgeScreenState extends State<CreateKnowledgeScreen>
   }
 
   // Update the file upload dialog
-void _showFileUploadDialog(BuildContext context) async {
+  void _showFileUploadDialog(BuildContext context) async {
     final result = await FilePicker.platform.pickFiles();
 
     if (result != null && result.files.single.path != null) {
@@ -492,114 +492,116 @@ void _showFileUploadDialog(BuildContext context) async {
                 padding: const EdgeInsets.all(24),
                 width: double.infinity,
                 constraints: const BoxConstraints(maxWidth: 400),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Header with avatars
-                    CircleAvatar(
-                      backgroundColor: Colors.purple[100],
-                      radius: 30,
-                      child: const Icon(
-                        Icons.language_outlined,
-                        color: Colors.white,
-                        size: 30,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    TextField(
-                      controller: nameController,
-                      decoration: InputDecoration(
-                        labelText: 'Name',
-                        hintText: 'Enter your knowledge unit name',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        suffixIcon: IconButton(
-                          icon: const Icon(Icons.content_paste),
-                          onPressed: () {
-                            // Handle paste functionality
-                          },
-                          constraints: const BoxConstraints(),
-                          padding: const EdgeInsets.all(8),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Header with avatars
+                      CircleAvatar(
+                        backgroundColor: Colors.purple[100],
+                        radius: 30,
+                        child: const Icon(
+                          Icons.language_outlined,
+                          color: Colors.white,
+                          size: 30,
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 24),
+                      const SizedBox(height: 16),
 
-                    TextField(
-                      controller: apiTokenController,
-                      decoration: InputDecoration(
-                        labelText: 'Slack Bot Token',
-                        hintText: 'Enter your Slack bot token',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        suffixIcon: IconButton(
-                          icon: const Icon(Icons.content_paste),
-                          onPressed: () {
-                            // Handle paste functionality
-                          },
-                          constraints: const BoxConstraints(),
-                          padding: const EdgeInsets.all(8),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Confirm button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          setState(() {
-                            _selectedSource = 'Slack';
-                            _knowledge_unit_name = nameController.text;
-                            _confluence_api_token = apiTokenController.text;
-                          });
-                          Navigator.pop(context);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF415DF2),
-                          disabledBackgroundColor: Colors.grey[300],
-                          foregroundColor: Colors.white,
-                          disabledForegroundColor: Colors.grey[500],
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: const Text(
-                          'Confirm',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Cancel button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: TextButton.styleFrom(
-                          shape: RoundedRectangleBorder(
+                      TextField(
+                        controller: nameController,
+                        decoration: InputDecoration(
+                          labelText: 'Name',
+                          hintText: 'Enter your knowledge unit name',
+                          border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            side: BorderSide(color: Colors.grey[300]!),
+                          ),
+                          suffixIcon: IconButton(
+                            icon: const Icon(Icons.content_paste),
+                            onPressed: () {
+                              // Handle paste functionality
+                            },
+                            constraints: const BoxConstraints(),
+                            padding: const EdgeInsets.all(8),
                           ),
                         ),
-                        child: const Text(
-                          'Cancel',
-                          style: TextStyle(color: Colors.black87),
+                      ),
+                      const SizedBox(height: 24),
+
+                      TextField(
+                        controller: apiTokenController,
+                        decoration: InputDecoration(
+                          labelText: 'Slack Bot Token',
+                          hintText: 'Enter your Slack bot token',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          suffixIcon: IconButton(
+                            icon: const Icon(Icons.content_paste),
+                            onPressed: () {
+                              // Handle paste functionality
+                            },
+                            constraints: const BoxConstraints(),
+                            padding: const EdgeInsets.all(8),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 24),
+
+                      // Confirm button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            setState(() {
+                              _selectedSource = 'Slack';
+                              _knowledge_unit_name = nameController.text;
+                              _confluence_api_token = apiTokenController.text;
+                            });
+                            Navigator.pop(context);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF415DF2),
+                            disabledBackgroundColor: Colors.grey[300],
+                            foregroundColor: Colors.white,
+                            disabledForegroundColor: Colors.grey[500],
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: const Text(
+                            'Confirm',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Cancel button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: TextButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              side: BorderSide(color: Colors.grey[300]!),
+                            ),
+                          ),
+                          child: const Text(
+                            'Cancel',
+                            style: TextStyle(color: Colors.black87),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );
@@ -608,7 +610,6 @@ void _showFileUploadDialog(BuildContext context) async {
       },
     );
   }
-
 
   // Add this widget to display selected website
   Widget _buildSelectedWebsite() {
@@ -837,8 +838,7 @@ void _showFileUploadDialog(BuildContext context) async {
   // Also update the website dialog to fix potential overflow
   void _showWebsiteDialog(BuildContext context) {
     final linkController = TextEditingController();
-    final nameController =
-        TextEditingController();
+    final nameController = TextEditingController();
 
     bool isValidUrl(String url) {
       try {
@@ -869,126 +869,129 @@ void _showFileUploadDialog(BuildContext context) async {
                 padding: const EdgeInsets.all(24),
                 width: double.infinity,
                 constraints: const BoxConstraints(maxWidth: 400),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Header with avatars
-                    CircleAvatar(
-                      backgroundColor: Colors.purple[100],
-                      radius: 30,
-                      child: const Icon(
-                        Icons.language_outlined,
-                        color: Colors.white,
-                        size: 30,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Title
-                    const Text(
-                      'Website',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Import Link Website',
-                      style: TextStyle(color: Colors.grey, fontSize: 14),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Website name input field
-                    TextField(
-                      controller: nameController,
-                      decoration: InputDecoration(
-                        labelText: 'Website Name',
-                        hintText: 'Enter website name',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Header with avatars
+                      CircleAvatar(
+                        backgroundColor: Colors.purple[100],
+                        radius: 30,
+                        child: const Icon(
+                          Icons.language_outlined,
+                          color: Colors.white,
+                          size: 30,
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
+                      const SizedBox(height: 16),
 
-                    // Link input field
-                    TextField(
-                      controller: linkController,
-                      decoration: InputDecoration(
-                        labelText: 'Link',
-                        hintText: 'Enter website URL',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        suffixIcon: IconButton(
-                          icon: const Icon(Icons.content_paste),
-                          onPressed: () {
-                            // Handle paste functionality
-                          },
-                          constraints: const BoxConstraints(),
-                          padding: const EdgeInsets.all(8),
+                      // Title
+                      const Text(
+                        'Website',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Confirm button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: ElevatedButton(
-                        onPressed:
-                            isValid
-                                ? () {
-                                  setState(() {
-                                    _selectedSource = 'Website';
-                                    _selectedWebsiteUrl = linkController.text;
-                                    _selectedWebsiteName = nameController.text;
-                                  });
-                                  Navigator.pop(context);
-                                }
-                                : null,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF415DF2),
-                          disabledBackgroundColor: Colors.grey[300],
-                          foregroundColor: Colors.white,
-                          disabledForegroundColor: Colors.grey[500],
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: const Text(
-                          'Confirm',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Import Link Website',
+                        style: TextStyle(color: Colors.grey, fontSize: 14),
                       ),
-                    ),
-                    const SizedBox(height: 12),
+                      const SizedBox(height: 24),
 
-                    // Cancel button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: TextButton.styleFrom(
-                          shape: RoundedRectangleBorder(
+                      // Website name input field
+                      TextField(
+                        controller: nameController,
+                        decoration: InputDecoration(
+                          labelText: 'Website Name',
+                          hintText: 'Enter website name',
+                          border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            side: BorderSide(color: Colors.grey[300]!),
                           ),
                         ),
-                        child: const Text(
-                          'Cancel',
-                          style: TextStyle(color: Colors.black87),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Link input field
+                      TextField(
+                        controller: linkController,
+                        decoration: InputDecoration(
+                          labelText: 'Link',
+                          hintText: 'Enter website URL',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          suffixIcon: IconButton(
+                            icon: const Icon(Icons.content_paste),
+                            onPressed: () {
+                              // Handle paste functionality
+                            },
+                            constraints: const BoxConstraints(),
+                            padding: const EdgeInsets.all(8),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 24),
+
+                      // Confirm button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton(
+                          onPressed:
+                              isValid
+                                  ? () {
+                                    setState(() {
+                                      _selectedSource = 'Website';
+                                      _selectedWebsiteUrl = linkController.text;
+                                      _selectedWebsiteName =
+                                          nameController.text;
+                                    });
+                                    Navigator.pop(context);
+                                  }
+                                  : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF415DF2),
+                            disabledBackgroundColor: Colors.grey[300],
+                            foregroundColor: Colors.white,
+                            disabledForegroundColor: Colors.grey[500],
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: const Text(
+                            'Confirm',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Cancel button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: TextButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              side: BorderSide(color: Colors.grey[300]!),
+                            ),
+                          ),
+                          child: const Text(
+                            'Cancel',
+                            style: TextStyle(color: Colors.black87),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );
@@ -1033,154 +1036,157 @@ void _showFileUploadDialog(BuildContext context) async {
                 padding: const EdgeInsets.all(24),
                 width: double.infinity,
                 constraints: const BoxConstraints(maxWidth: 400),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Header with avatars
-                    CircleAvatar(
-                      backgroundColor: Colors.purple[100],
-                      radius: 30,
-                      child: const Icon(
-                        Icons.language_outlined,
-                        color: Colors.white,
-                        size: 30,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Title
-                    const Text(
-                      'Confluence',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Import Link Website',
-                      style: TextStyle(color: Colors.grey, fontSize: 14),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Website name input field
-                    TextField(
-                      controller: nameController,
-                      decoration: InputDecoration(
-                        labelText: 'Name',
-                        hintText: 'Enter knowledge unit name',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Header with avatars
+                      CircleAvatar(
+                        backgroundColor: Colors.purple[100],
+                        radius: 30,
+                        child: const Icon(
+                          Icons.language_outlined,
+                          color: Colors.white,
+                          size: 30,
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
+                      const SizedBox(height: 16),
 
-                    TextField(
-                      controller: linkController,
-                      decoration: InputDecoration(
-                        labelText: 'Wiki Page URL',
-                        hintText: 'hpps://wiki.example.com/page',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
+                      // Title
+                      const Text(
+                        'Confluence',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    TextField(
-                      controller: usernameController,
-                      decoration: InputDecoration(
-                        labelText: 'Username',
-                        hintText: 'Enter your Confluence username',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Import Link Website',
+                        style: TextStyle(color: Colors.grey, fontSize: 14),
                       ),
-                    ),
-                    const SizedBox(height: 16),
+                      const SizedBox(height: 24),
 
-                    // Link input field
-                    TextField(
-                      controller: apiTokenController,
-                      decoration: InputDecoration(
-                        labelText: 'API Token',
-                        hintText: 'Enter your Confluence API token',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        suffixIcon: IconButton(
-                          icon: const Icon(Icons.content_paste),
-                          onPressed: () {
-                            // Handle paste functionality
-                          },
-                          constraints: const BoxConstraints(),
-                          padding: const EdgeInsets.all(8),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Confirm button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: ElevatedButton(
-                        onPressed:
-                            isValid
-                                ? () {
-                                  setState(() {
-                                    _selectedSource = 'Confluence';
-                                    _knowledge_unit_name = nameController.text;
-                                    _confluence_username =
-                                        usernameController.text;
-                                    _confluence_api_token =
-                                        apiTokenController.text;
-                                    _selectedWebsiteUrl = linkController.text;
-                                  });
-                                  Navigator.pop(context);
-                                }
-                                : null,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF415DF2),
-                          disabledBackgroundColor: Colors.grey[300],
-                          foregroundColor: Colors.white,
-                          disabledForegroundColor: Colors.grey[500],
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: const Text(
-                          'Confirm',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // Cancel button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: TextButton.styleFrom(
-                          shape: RoundedRectangleBorder(
+                      // Website name input field
+                      TextField(
+                        controller: nameController,
+                        decoration: InputDecoration(
+                          labelText: 'Name',
+                          hintText: 'Enter knowledge unit name',
+                          border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            side: BorderSide(color: Colors.grey[300]!),
                           ),
                         ),
-                        child: const Text(
-                          'Cancel',
-                          style: TextStyle(color: Colors.black87),
+                      ),
+                      const SizedBox(height: 16),
+
+                      TextField(
+                        controller: linkController,
+                        decoration: InputDecoration(
+                          labelText: 'Wiki Page URL',
+                          hintText: 'hpps://wiki.example.com/page',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 16),
+
+                      TextField(
+                        controller: usernameController,
+                        decoration: InputDecoration(
+                          labelText: 'Username',
+                          hintText: 'Enter your Confluence username',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Link input field
+                      TextField(
+                        controller: apiTokenController,
+                        decoration: InputDecoration(
+                          labelText: 'API Token',
+                          hintText: 'Enter your Confluence API token',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          suffixIcon: IconButton(
+                            icon: const Icon(Icons.content_paste),
+                            onPressed: () {
+                              // Handle paste functionality
+                            },
+                            constraints: const BoxConstraints(),
+                            padding: const EdgeInsets.all(8),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Confirm button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton(
+                          onPressed:
+                              isValid
+                                  ? () {
+                                    setState(() {
+                                      _selectedSource = 'Confluence';
+                                      _knowledge_unit_name =
+                                          nameController.text;
+                                      _confluence_username =
+                                          usernameController.text;
+                                      _confluence_api_token =
+                                          apiTokenController.text;
+                                      _selectedWebsiteUrl = linkController.text;
+                                    });
+                                    Navigator.pop(context);
+                                  }
+                                  : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF415DF2),
+                            disabledBackgroundColor: Colors.grey[300],
+                            foregroundColor: Colors.white,
+                            disabledForegroundColor: Colors.grey[500],
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: const Text(
+                            'Confirm',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Cancel button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: TextButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              side: BorderSide(color: Colors.grey[300]!),
+                            ),
+                          ),
+                          child: const Text(
+                            'Cancel',
+                            style: TextStyle(color: Colors.black87),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );
@@ -1189,7 +1195,6 @@ void _showFileUploadDialog(BuildContext context) async {
       },
     );
   }
-
 
   Widget _buildSectionTitle(String title) {
     return Padding(
