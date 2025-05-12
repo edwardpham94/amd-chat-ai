@@ -113,6 +113,11 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
   bool _isUnlimited = false;
   bool _isLoadingTokens = true;
 
+  bool _hasSentInitialMessage = false;
+
+  // Add this flag
+  bool _hasHandledPromptNavigation = false;
+
   // Get the selected model ID
   String get _selectedModel {
     // Check if any predefined model is selected
@@ -214,27 +219,30 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
     super.didChangeDependencies();
     final args =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-    if (args != null) {
+    if (args != null && !_hasHandledPromptNavigation) {
       if (args['showPromptModal'] == true &&
           args['promptTitle'] != null &&
           args['promptDescription'] != null) {
-        // Delay to ensure the widget is built completely
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _showPromptSelectionModal(
             args['promptTitle'],
             args['promptDescription'],
           );
         });
+        _hasHandledPromptNavigation = true;
       } else if (args['prompt'] != null) {
         _messageController.text = args['prompt'];
 
-        // If sendImmediately flag is true, send the message automatically
-        if (args['sendImmediately'] == true) {
-          // Use a post-frame callback to ensure the UI is built
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _handleSendMessage();
+        // Only send once
+        if (args['sendImmediately'] == true && !_hasSentInitialMessage) {
+          _hasSentInitialMessage = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
+            await _handleSendMessage();
+            // Clear the input after sending
+            _messageController.clear();
           });
         }
+        _hasHandledPromptNavigation = true;
       } else if (args['assistant'] != null) {
         // Handle the assistant passed from AssistantScreen
         final assistant = args['assistant'] as Assistant;
@@ -255,6 +263,7 @@ class _ChatAIScreenState extends State<ChatAIScreen> {
         } else {
           _selectAssistant(assistant.id);
         }
+        _hasHandledPromptNavigation = true;
       }
     }
   }

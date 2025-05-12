@@ -10,7 +10,7 @@ class AdService {
   bool _isInterstitialAdReady = false;
   bool _isInitialized = false;
   DateTime? _lastAdShownTime;
-  static const Duration _adInterval = Duration(minutes: 5);
+  static const Duration _adInterval = Duration(minutes: 10);
   bool _isTimerTriggered = false;
 
   // Test ad unit ID for development
