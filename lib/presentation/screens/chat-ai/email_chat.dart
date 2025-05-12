@@ -36,6 +36,9 @@ class _EmailChatScreenState extends State<EmailChatScreen> {
   // Keyboard visibility handling
   bool _isKeyboardVisible = false;
 
+  bool _isSuggestingMainIdea = false;
+  List<String> _mainIdeaSuggestions = [];
+
   @override
   void initState() {
     super.initState();
@@ -295,14 +298,6 @@ class _EmailChatScreenState extends State<EmailChatScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             _buildInputField(
-              controller: _mainIdeaController,
-              label: 'Main Idea',
-              hint: 'What\'s the key message?',
-              icon: Icons.lightbulb_outline,
-              required: true,
-            ),
-            const SizedBox(height: 12),
-            _buildInputField(
               controller: _actionController,
               label: 'Action',
               hint: 'What do you want the recipient to do?',
@@ -320,8 +315,34 @@ class _EmailChatScreenState extends State<EmailChatScreen> {
             ),
             const SizedBox(height: 12),
             _buildInputField(
+              controller: _mainIdeaController,
+              label: 'Main Idea',
+              hint: 'What\'s the key message?',
+              icon: Icons.lightbulb_outline,
+              required: true,
+              suffix:
+                  _isSuggestingMainIdea
+                      ? SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                      : IconButton(
+                        icon: const Icon(
+                          Icons.tips_and_updates,
+                          color: Colors.amber,
+                        ),
+                        tooltip: 'Suggest Main Idea',
+                        onPressed:
+                            _isSuggestingMainIdea
+                                ? null
+                                : _handleSuggestMainIdea,
+                      ),
+            ),
+            const SizedBox(height: 12),
+            _buildInputField(
               controller: _subjectController,
-              label: 'Subject',
+              label: 'Subject (optional)',
               hint: 'Email subject',
               icon: Icons.subject,
             ),
@@ -331,7 +352,7 @@ class _EmailChatScreenState extends State<EmailChatScreen> {
                 Expanded(
                   child: _buildInputField(
                     controller: _senderController,
-                    label: 'From',
+                    label: 'From (optional)',
                     hint: 'Sender',
                     icon: Icons.person_outline,
                   ),
@@ -340,7 +361,7 @@ class _EmailChatScreenState extends State<EmailChatScreen> {
                 Expanded(
                   child: _buildInputField(
                     controller: _receiverController,
-                    label: 'To',
+                    label: 'To (optional)',
                     hint: 'Recipient',
                     icon: Icons.person,
                   ),
@@ -350,7 +371,7 @@ class _EmailChatScreenState extends State<EmailChatScreen> {
             const SizedBox(height: 12),
             _buildInputField(
               controller: _languageController,
-              label: 'Language',
+              label: 'Language (optional)',
               hint: 'Email language (e.g., English)',
               icon: Icons.language,
             ),
@@ -391,6 +412,7 @@ class _EmailChatScreenState extends State<EmailChatScreen> {
     required IconData icon,
     int maxLines = 1,
     bool required = false,
+    Widget? suffix,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -422,6 +444,7 @@ class _EmailChatScreenState extends State<EmailChatScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+              if (suffix != null) ...[const Spacer(), suffix],
             ],
           ),
           const SizedBox(height: 4),
@@ -477,48 +500,40 @@ class _EmailChatScreenState extends State<EmailChatScreen> {
       _isWaitingForResponse = true;
     });
 
+    // Show dialog immediately with loading
+    final dialogKey = GlobalKey<_GeneratedEmailDialogState>();
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => GeneratedEmailDialog(key: dialogKey),
+    );
+
     try {
-      final stream = await _chatService.sendEmailMessage(
+      final response = await _chatService.sendResponseMail(
         emailRequest: emailRequest,
-        conversationId: _currentConversationId,
+        assistantId: 'gpt-4o-mini',
       );
-
-      String accumulatedResponse = '';
-      await for (final chunk in stream) {
-        if (chunk is Map<String, dynamic>) {
-          if (chunk['type'] == 'error') {
-            setState(() {
-              _messages.add({
-                'message': 'Error: ${chunk['error']}',
-                'type': MessageType.error,
-                'timestamp': DateTime.now(),
-              });
-              _isWaitingForResponse = false;
-            });
-            return;
-          }
-
-          final content = chunk['content'] as String;
-          accumulatedResponse += content;
-
-          setState(() {
-            // Update or add the assistant's message
-            final lastMessage = _messages.last;
-            if (lastMessage['type'] == MessageType.assistant) {
-              lastMessage['message'] = accumulatedResponse;
-            } else {
-              _messages.add({
-                'message': accumulatedResponse,
-                'type': MessageType.assistant,
-                'timestamp': DateTime.now(),
-              });
-            }
+      if (response != null &&
+          response.data != null &&
+          response.data['email'] != null) {
+        final generatedEmail = response.data['email'] as String;
+        setState(() {
+          _messages.add({
+            'message': generatedEmail,
+            'type': MessageType.assistant,
+            'timestamp': DateTime.now(),
           });
-
-          if (chunk['conversationId'] != null) {
-            _currentConversationId = chunk['conversationId'];
-          }
-        }
+        });
+        dialogKey.currentState?.showResult(generatedEmail);
+      } else {
+        setState(() {
+          _messages.add({
+            'message': 'No email generated.',
+            'type': MessageType.error,
+            'timestamp': DateTime.now(),
+          });
+        });
+        dialogKey.currentState?.showError('No email generated.');
       }
     } catch (e) {
       setState(() {
@@ -528,19 +543,395 @@ class _EmailChatScreenState extends State<EmailChatScreen> {
           'timestamp': DateTime.now(),
         });
       });
+      dialogKey.currentState?.showError('Error: $e');
     } finally {
       setState(() {
         _isWaitingForResponse = false;
       });
     }
+  }
 
-    // Clear input fields after successful send
-    _mainIdeaController.clear();
-    _actionController.clear();
-    _emailController.clear();
-    _subjectController.clear();
-    _senderController.clear();
-    _receiverController.clear();
-    _languageController.clear();
+  Future<void> _handleSuggestMainIdea() async {
+    final action = _actionController.text.trim();
+    final email = _emailController.text.trim();
+    final subject = _subjectController.text.trim();
+    final sender = _senderController.text.trim();
+    final receiver = _receiverController.text.trim();
+    final language = _languageController.text.trim();
+
+    if (action.isEmpty || email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please fill in Action and Email Content first.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isSuggestingMainIdea = true;
+    });
+
+    try {
+      final emailRequest = EmailRequest(
+        action: action,
+        email: email,
+        metadata: EmailMetadata(
+          subject: subject,
+          sender: sender,
+          receiver: receiver,
+          language: language,
+        ),
+      );
+      // Use a default assistantId for now (update if needed)
+      final response = await _chatService.suggestReplyIdeas(
+        emailRequest: emailRequest,
+        assistantId: 'gpt-4o-mini',
+      );
+      if (response != null &&
+          response.data != null &&
+          response.data['ideas'] is List) {
+        final ideas = List<String>.from(response.data['ideas']);
+        setState(() {
+          _mainIdeaSuggestions = ideas;
+        });
+        _showMainIdeaSuggestionsModal(ideas);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No suggestions found.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to fetch suggestions: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() {
+        _isSuggestingMainIdea = false;
+      });
+    }
+  }
+
+  void _showMainIdeaSuggestionsModal(List<String> ideas) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      backgroundColor: Theme.of(context).dialogBackgroundColor,
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade50,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.tips_and_updates,
+                    size: 32,
+                    color: Colors.amber.shade700,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Suggested Main Ideas',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.amber.shade900,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 18),
+                if (ideas.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: Text(
+                      'No suggestions available.',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  )
+                else
+                  ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: ideas.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (context, idx) {
+                      final idea = ideas[idx];
+                      return Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(14),
+                          onTap: () {
+                            Navigator.pop(context);
+                            setState(() {
+                              _mainIdeaController.text = idea;
+                            });
+                          },
+                          child: Ink(
+                            decoration: BoxDecoration(
+                              color: Colors.amber.shade50,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: Colors.amber.shade100),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.amber.shade100.withOpacity(
+                                    0.15,
+                                  ),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 14,
+                                horizontal: 16,
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.lightbulb_outline,
+                                    color: Colors.amber.shade700,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      idea,
+                                      style: const TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                const SizedBox(height: 18),
+                OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.amber.shade900,
+                    side: BorderSide(color: Colors.amber.shade200),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 24,
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Close'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// Dialog widget for generated email with loading/result/error
+class GeneratedEmailDialog extends StatefulWidget {
+  const GeneratedEmailDialog({super.key});
+
+  @override
+  State<GeneratedEmailDialog> createState() => _GeneratedEmailDialogState();
+}
+
+class _GeneratedEmailDialogState extends State<GeneratedEmailDialog> {
+  String? _emailContent;
+  String? _error;
+  bool _loading = true;
+
+  void showResult(String emailContent) {
+    setState(() {
+      _emailContent = emailContent;
+      _loading = false;
+      _error = null;
+    });
+  }
+
+  void showError(String error) {
+    setState(() {
+      _error = error;
+      _loading = false;
+      _emailContent = null;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      backgroundColor: isDark ? theme.colorScheme.surface : Colors.white,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.email_outlined,
+                  size: 40,
+                  color: Colors.blue.shade700,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                'Generated Email',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue.shade900,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              if (_loading)
+                Column(
+                  children: [
+                    const SizedBox(height: 16),
+                    const CircularProgressIndicator(),
+                    const SizedBox(height: 24),
+                    Text(
+                      'Generating your email...',
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                  ],
+                )
+              else if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Text(
+                    _error!,
+                    style: const TextStyle(color: Colors.red, fontSize: 16),
+                    textAlign: TextAlign.center,
+                  ),
+                )
+              else ...[
+                const SizedBox(height: 18),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Email Content',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: Colors.blue.shade700,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.grey.shade900 : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: SelectableText(
+                    _emailContent ?? '',
+                    style: const TextStyle(fontSize: 16, height: 1.5),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.copy, size: 20),
+                        label: const Text('Copy Email'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue.shade700,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          textStyle: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        onPressed: () async {
+                          await Clipboard.setData(
+                            ClipboardData(text: _emailContent!),
+                          );
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Copied to clipboard!'),
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.blue.shade700,
+                        side: BorderSide(color: Colors.blue.shade200),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 14,
+                          horizontal: 18,
+                        ),
+                        textStyle: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Close'),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
