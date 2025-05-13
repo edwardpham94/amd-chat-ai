@@ -30,10 +30,18 @@ class AppSidebar extends StatelessWidget {
             const Divider(),
             ListTile(
               leading: const Icon(Icons.person),
-              title: const Text('Account Settings'),
+              title: const Text('Profile'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.pushNamed(context, '/account-settings');
+                Navigator.pushNamed(context, '/profile');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.chat_bubble_outline),
+              title: const Text('Chat AI'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/chat-ai');
               },
             ),
             ListTile(
@@ -53,7 +61,7 @@ class AppSidebar extends StatelessWidget {
             //   },
             // ),
             ListTile(
-              leading: const Icon(Icons.chat_bubble_outline),
+              leading: const Icon(Icons.lightbulb_outline),
               title: const Text('Prompt'),
               onTap: () {
                 Navigator.pop(context);
@@ -69,7 +77,7 @@ class AppSidebar extends StatelessWidget {
             //   },
             // ),
             ListTile(
-              leading: const Icon(Icons.assistant),
+              leading: const Icon(Icons.smart_toy),
               title: const Text('Assistant'),
               onTap: () {
                 Navigator.pop(context);
@@ -77,11 +85,11 @@ class AppSidebar extends StatelessWidget {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.chat_bubble_outline),
-              title: const Text('Chat AI'),
+              leading: const Icon(Icons.email_outlined),
+              title: const Text('Email Assistant'),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.pushNamed(context, '/chat-ai');
+                Navigator.pushNamed(context, '/email');
               },
             ),
             const Divider(),

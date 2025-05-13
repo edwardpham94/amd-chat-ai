@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-enum MessageType { user, assistant }
+enum MessageType { user, assistant, error }
 
 class ChatMessage extends StatelessWidget {
   final String message;
@@ -19,6 +19,7 @@ class ChatMessage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isUser = type == MessageType.user;
+    final isError = type == MessageType.error;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -30,13 +31,14 @@ class ChatMessage extends StatelessWidget {
           if (!isUser && showAvatar)
             CircleAvatar(
               radius: 16,
-              backgroundColor: const Color(
-                0xFF6C63FF,
-              ).withAlpha(26),
-              child: const Icon(
-                Icons.smart_toy,
+              backgroundColor:
+                  isError
+                      ? Colors.red.shade100
+                      : const Color(0xFF6C63FF).withAlpha(26),
+              child: Icon(
+                isError ? Icons.error_outline : Icons.smart_toy,
                 size: 16,
-                color: Color(0xFF6C63FF),
+                color: isError ? Colors.red : const Color(0xFF6C63FF),
               ),
             )
           else if (!isUser)
@@ -44,21 +46,17 @@ class ChatMessage extends StatelessWidget {
 
           const SizedBox(width: 8),
 
-          Flexible(
+          Expanded(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isUser ? const Color(0xFF6C63FF) : Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(18),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withAlpha(
-                      13,
-                    ), 
-                    blurRadius: 2,
-                    offset: const Offset(0, 1),
-                  ),
-                ],
+                color:
+                    isUser
+                        ? Colors.blue.shade100
+                        : isError
+                        ? Colors.red.shade50
+                        : Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -66,51 +64,26 @@ class ChatMessage extends StatelessWidget {
                   Text(
                     message,
                     style: TextStyle(
-                      color: isUser ? Colors.white : Colors.black87,
-                      fontSize: 16,
+                      color: isError ? Colors.red.shade700 : Colors.black87,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    _formatTime(timestamp),
-                    style: TextStyle(
-                      color:
-                          isUser
-                              ? Colors.white.withAlpha(
-                                179,
-                              ) 
-                              : Colors.black54,
-                      fontSize: 12,
-                    ),
+                    _formatTimestamp(timestamp),
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                   ),
                 ],
               ),
             ),
           ),
 
-          const SizedBox(width: 8),
-
-          if (isUser && showAvatar)
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: Colors.blue.shade100,
-              child: const Text(
-                'W',
-                style: TextStyle(
-                  color: Colors.blue,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-              ),
-            )
-          else if (isUser)
-            const SizedBox(width: 32),
+          if (isUser) const SizedBox(width: 32),
         ],
       ),
     );
   }
 
-  String _formatTime(DateTime time) {
-    return '${time.hour}:${time.minute.toString().padLeft(2, '0')}';
+  String _formatTimestamp(DateTime timestamp) {
+    return '${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}';
   }
 }

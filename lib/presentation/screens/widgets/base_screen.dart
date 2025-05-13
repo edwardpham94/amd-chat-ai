@@ -9,7 +9,7 @@ class BaseScreen extends StatefulWidget {
   final FloatingActionButtonLocation? floatingActionButtonLocation;
   final Widget? bottomNavigationBar;
   final bool showBackButton;
-
+  final bool isChatScreen;
   const BaseScreen({
     super.key,
     required this.body,
@@ -19,6 +19,7 @@ class BaseScreen extends StatefulWidget {
     this.floatingActionButtonLocation,
     this.bottomNavigationBar,
     this.showBackButton = false,
+    this.isChatScreen = false,
   });
 
   @override
@@ -40,12 +41,13 @@ class _BaseScreenState extends State<BaseScreen> {
         title: Text(widget.title),
         centerTitle: true,
         leading:
-            widget.showBackButton
-                ? IconButton(
+            widget.isChatScreen
+                ? null
+                : IconButton(
                   icon: const Icon(Icons.arrow_back),
                   onPressed: () => Navigator.of(context).pop(),
-                )
-                : null,
+                ),
+        automaticallyImplyLeading: !widget.isChatScreen,
         actions: [
           // Add the sidebar button to the top-right
           IconButton(icon: const Icon(Icons.menu), onPressed: _openEndDrawer),
